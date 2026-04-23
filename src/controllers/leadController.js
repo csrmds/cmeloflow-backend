@@ -10,7 +10,6 @@ exports.upsertLead = async (req, res) => {
 		source
 	} = req.body;
 
-	console.log("log server: ", req.body)
 
 	try {
 		// Buscar client_id
@@ -27,7 +26,7 @@ exports.upsertLead = async (req, res) => {
 
 		// 1. Verifica se já existe
 		const [rows] = await pool.query(
-			`SELECT * FROM vw_clients_leads 
+			`SELECT lead_id, client_id, client_instagram_username FROM vw_clients_leads 
        	WHERE client_instagram_id = ? AND lead_instagram_scoped_userid = ?`,
 			[instagram_user_id, instagram_scoped_userid]
 		);
@@ -66,9 +65,9 @@ exports.upsertLead = async (req, res) => {
 				`UPDATE leads  SET last_message = ?, updated_at = NOW() WHERE id = ?`,
 				[message, lead.lead_id]
 			);
-			console.log("message no update: ", result, "LEAD ROW: ", rows[0])
+			//console.log("message no update: ", result, "LEAD ROW: ", rows[0])
 
-			return res.json({ message: 'Lead atualizado', id: lead.id });
+			return res.json({ message: 'Lead atualizado', id: lead.lead_id });
 		}
 
 	} catch (err) {
