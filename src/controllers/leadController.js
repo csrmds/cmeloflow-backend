@@ -6,8 +6,8 @@ exports.upsertLead = async (req, res) => {
 		instagram_scoped_userid,
 		instagram_username,
 		instagram_name,
-		whatsapp_lead,
-		whatsapp_client,
+		lead_whatsapp,
+		client_whatsapp,
 		event,
 		message,
 		source
@@ -19,7 +19,7 @@ exports.upsertLead = async (req, res) => {
 		if (source=="whatsapp") {
 			const [clients] = await pool.query(
 				`SELECT id FROM clients WHERE whatsapp_number = ?`,
-				[whatsapp_client]
+				[client_whatsapp]
 			);	
 		} else {
 			const [clients] = await pool.query(
@@ -40,7 +40,7 @@ exports.upsertLead = async (req, res) => {
 			const [rows] = await pool.query(
 				`SELECT lead_id, client_id, client_instagram_username FROM vw_clients_leads 
 				WHERE client_whatsapp_number = ? AND lead_whatsapp_number = ?`,
-				[whatsapp_client, whatsapp_lead]
+				[client_whatsapp, lead_whatsapp]
 			);
 		} else {
 			const [rows] = await pool.query(
@@ -70,7 +70,7 @@ exports.upsertLead = async (req, res) => {
 					instagram_scoped_userid,
 					instagram_username,
 					instagram_name,
-					whatsapp_lead,
+					lead_whatsapp,
 					message,
 					message,
 					source
