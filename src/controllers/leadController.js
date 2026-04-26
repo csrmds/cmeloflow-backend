@@ -15,18 +15,22 @@ exports.upsertLead = async (req, res) => {
 
 
 	try {
+		let clients;
+		let rows;
+		
 		// Buscar client_id
-		if (source=="whatsapp") {
-			const [clients] = await pool.query(
+		if (source==="whatsapp") {
+			[clients] = await pool.query(
 				`SELECT id FROM clients WHERE whatsapp_number = ?`,
 				[client_whatsapp]
 			);	
 		} else {
-			const [clients] = await pool.query(
+			[clients] = await pool.query(
 				`SELECT id FROM clients WHERE instagram_id = ?`,
 				[instagram_user_id]
 			);	
 		}
+		
 		
 
 		if (clients.length === 0) {
@@ -36,14 +40,14 @@ exports.upsertLead = async (req, res) => {
 		const client_id = clients[0].id;
 
 		// 1. Verifica se já existe
-		if (source=="whatsapp") {
-			const [rows] = await pool.query(
+		if (source==="whatsapp") {
+			[rows] = await pool.query(
 				`SELECT lead_id, client_id, client_instagram_username FROM vw_clients_leads 
 				WHERE client_whatsapp_number = ? AND lead_whatsapp_number = ?`,
 				[client_whatsapp, lead_whatsapp]
 			);
 		} else {
-			const [rows] = await pool.query(
+			[rows] = await pool.query(
 				`SELECT lead_id, client_id, client_instagram_username FROM vw_clients_leads 
 				WHERE client_instagram_id = ? AND lead_instagram_scoped_userid = ?`,
 				[instagram_user_id, instagram_scoped_userid]

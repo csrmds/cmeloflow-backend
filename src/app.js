@@ -14,7 +14,7 @@ app.use('/leads', leadRoutes);
 
 
 app.get('/teste', (req, res) => {
-  res.send('meu teste');
+  res.send('meu teste asdasd');
 })
 
 
