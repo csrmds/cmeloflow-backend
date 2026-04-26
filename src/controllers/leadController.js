@@ -6,6 +6,9 @@ exports.upsertLead = async (req, res) => {
 		instagram_scoped_userid,
 		instagram_username,
 		instagram_name,
+		whatsapp_lead,
+		whatsapp_client,
+		event,
 		message,
 		source
 	} = req.body;
@@ -13,10 +16,18 @@ exports.upsertLead = async (req, res) => {
 
 	try {
 		// Buscar client_id
-		const [clients] = await pool.query(
-			`SELECT id FROM clients WHERE instagram_id = ?`,
-			[instagram_user_id]
-		);
+		if (source=="whatsapp") {
+			const [clients] = await pool.query(
+				`SELECT id FROM clients WHERE whatsapp_number = ?`,
+				[whatsapp_client]
+			);	
+		} else {
+			const [clients] = await pool.query(
+				`SELECT id FROM clients WHERE instagram_id = ?`,
+				[instagram_user_id]
+			);	
+		}
+		
 
 		if (clients.length === 0) {
 			return res.status(404).json({ error: 'Cliente não encontrado' });
@@ -25,11 +36,20 @@ exports.upsertLead = async (req, res) => {
 		const client_id = clients[0].id;
 
 		// 1. Verifica se já existe
-		const [rows] = await pool.query(
-			`SELECT lead_id, client_id, client_instagram_username FROM vw_clients_leads 
-       	WHERE client_instagram_id = ? AND lead_instagram_scoped_userid = ?`,
-			[instagram_user_id, instagram_scoped_userid]
-		);
+		if (source=="whatsapp") {
+			const [rows] = await pool.query(
+				`SELECT lead_id, client_id, client_instagram_username FROM vw_clients_leads 
+				WHERE client_whatsapp_number = ? AND lead_whatsapp_number = ?`,
+				[whatsapp_client, whatsapp_lead]
+			);
+		} else {
+			const [rows] = await pool.query(
+				`SELECT lead_id, client_id, client_instagram_username FROM vw_clients_leads 
+				WHERE client_instagram_id = ? AND lead_instagram_scoped_userid = ?`,
+				[instagram_user_id, instagram_scoped_userid]
+			);
+		}
+		
 
 		if (rows.length === 0) {
 			// 2. Cria novo lead
@@ -39,16 +59,18 @@ exports.upsertLead = async (req, res) => {
 				instagram_scoped_userid,
 				instagram_username,
 				instagram_name,
+				whatsapp_number,
 				first_message,
 				last_message,
 				source,
 				status
-        	) VALUES (?, ?, ?, ?, ?, ?, ?, 'novo')`,
+        	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'novo')`,
 				[
 					client_id,
 					instagram_scoped_userid,
 					instagram_username,
 					instagram_name,
+					whatsapp_lead,
 					message,
 					message,
 					source
