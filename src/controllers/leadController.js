@@ -42,13 +42,13 @@ exports.upsertLead = async (req, res) => {
 		// 1. Verifica se já existe
 		if (source==="whatsapp") {
 			[rows] = await pool.query(
-				`SELECT lead_id, client_id, client_instagram_username FROM vw_clients_leads 
+				`SELECT lead_id, client_id, client_instagram_username, lead_status, lead_human_handover FROM vw_clients_leads 
 				WHERE client_whatsapp_number = ? AND lead_whatsapp_number = ?`,
 				[client_whatsapp, lead_whatsapp]
 			);
 		} else {
 			[rows] = await pool.query(
-				`SELECT lead_id, client_id, client_instagram_username FROM vw_clients_leads 
+				`SELECT lead_id, client_id, client_instagram_username, lead_status, lead_human_handover FROM vw_clients_leads 
 				WHERE client_instagram_id = ? AND lead_instagram_scoped_userid = ?`,
 				[instagram_user_id, instagram_scoped_userid]
 			);
@@ -81,7 +81,7 @@ exports.upsertLead = async (req, res) => {
 				]
 			);
 
-			return res.json({ message: 'Lead criado', id: result.insertId });
+			return res.json({ message: 'Lead criado', id: result.insertId, lead });
 
 		} else {
 			// 3. Atualiza lead existente
@@ -93,10 +93,36 @@ exports.upsertLead = async (req, res) => {
 			);
 			//console.log("message no update: ", result, "LEAD ROW: ", rows[0])
 
-			return res.json({ message: 'Lead atualizado', id: lead.lead_id });
+			return res.json({ message: 'Lead atualizado', id: lead.lead_id, lead });
 		}
 
 	} catch (err) {
 		return res.status(500).json({ error: err.message });
 	}
 };
+
+exports.updateHumanHandover= async (req, res) => {
+	const handover= req.body.human_handover
+	const client_id= req.body.client_id
+	const lead_id= req.body.lead_id
+
+	console.log("humandhandover req: ", req.body)
+
+	try {
+		let result;
+		//const sql= `update leads set human_handover= ? where client_id= ? `, [handover, client_id]
+		//console.log("SQL: ", sql)
+		
+		[result] = await pool.query(`update leads set human_handover= ? where client_id= ? and id = ?`, [handover, client_id, lead_id])
+		//console.log("human handover: ", result, "SQL: ", sql)
+
+		if (result.length===0) {
+			return res.status(404).json({error: "Não foi possível atualizar a tabela leads", result})
+		}
+
+		return res.status(201).json({result})
+		
+	} catch(e) {
+		return res.status(400).json({error: e })
+	}
+}
