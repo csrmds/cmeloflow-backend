@@ -101,6 +101,26 @@ exports.upsertLead = async (req, res) => {
 	}
 };
 
+exports.list = async (req, res) => {
+	const client_id= req.user.client_id
+	const user_role= req.user.user_role
+
+	try {
+		let rows 
+
+		if (user_role=== "client") {
+			[rows] = await pool.query(`select * from vw_clients_leads where client_id= ?`, [client_id])
+
+		} else if (user_role=== "admin") {
+			[rows] = await pool.query(`select * from vw_clients_leads`)
+		}
+
+		res.json(rows);
+	} catch(e) {
+		res.status(500).json({ error: err.message })
+	}
+}
+
 exports.updateHumanHandover= async (req, res) => {
 	const handover= req.body.human_handover
 	const client_id= req.body.client_id
