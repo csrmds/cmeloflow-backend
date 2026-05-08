@@ -8,7 +8,7 @@ function generateToken(user) {
       client_id: user.client_id
     },
     process.env.JWT_SECRET,
-    { expiresIn: '7d' }
+    { expiresIn: '3h' }
   );
 }
 
