@@ -19,9 +19,10 @@ exports.create = async (req, res) => {
 
 exports.list = async (req, res) => {
 	const client_id = req.user.client_id;
-	const client_whatsapp = req.body.client_whatsapp;
+	//const client_whatsapp = req.body.client_whatsapp;
+	const client_whatsapp = "5527";
 	const user_role= req.user.user_role;
-	console.log("Log whatsapp: ", req.body.client_whatsapp)
+	//console.log("Log whatsapp: ", req.body.client_whatsapp)
 	console.log("Log user client_id: ", req.user.client_id)
 
 	try {

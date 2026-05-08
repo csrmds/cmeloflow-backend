@@ -58,7 +58,9 @@ exports.create = async (req, res) => {
 
 // PUT /clients/:id
 exports.update = async (req, res) => {
-  const { id } = req.params;
+  // console.log("client update controller: ", req.body)
+  // console.log("req params: ", req.params.id)
+  const id = req.params.id;
   const {
     name,
     email,
@@ -68,15 +70,16 @@ exports.update = async (req, res) => {
     instagram_photo,
     whatsapp_number,
     status,
+    about,
   } = req.body;
 
   try {
     const [result] = await pool.query(
       `UPDATE clients SET
         name = ?, email = ?, instagram_id = ?, instagram_username = ?,
-        instagram_name = ?, instagram_photo = ?, whatsapp_number = ?, status = ?
+        instagram_name = ?, instagram_photo = ?, whatsapp_number = ?, status = ?, about = ?
        WHERE id = ?`,
-      [name, email, instagram_id, instagram_username, instagram_name, instagram_photo, whatsapp_number, status, id]
+      [name, email, instagram_id, instagram_username, instagram_name, instagram_photo, whatsapp_number, status, about, id]
     );
 
     if (!result.affectedRows) return res.status(404).json({ error: 'Cliente não encontrado' });
