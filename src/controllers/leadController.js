@@ -87,7 +87,6 @@ exports.upsertLead = async (req, res) => {
 				`UPDATE leads  SET last_message = ?, updated_at = NOW() WHERE id = ?`,
 				[message, lead.lead_id]
 			);
-			//console.log("message no update: ", result, "LEAD ROW: ", rows[0])
 
 			return res.json({ message: 'Lead atualizado', id: lead.lead_id, lead });
 		}
@@ -128,7 +127,6 @@ exports.insert = async (req, res) => {
 		return response.success(res, result, "Lead cadastrado com sucesso", 200)
 
 	} catch(e) {
-		console.log("erro catch: ", e)
 		return response.error(res, "Erro ao criar novo Lead catch", 500, e)
 	}
 }
@@ -168,8 +166,8 @@ exports.getById = async (req, res) => {
 			[result] = await pool.query(`select * from leads where id= ?`, [id])
 		}
 
-		if (result.affectedRows === 0) {
-			return res.status(404).json({ error: "Não foi possível encontrar o leads", result })
+		if (result.length === 0) {
+			return res.status(404).json({ error: "Não foi possível encontrar o lead", result })
 		}
 
 		res.json(result)
@@ -202,12 +200,12 @@ exports.update = async (req, res) => {
 		}
 
 		if (result.affectedRows === 0) {
-			return res.status(404).json({ error: "Não foi possível atualizar a tabela leads", result })
+			return response.error(res, "Não foi possível atualizar o lead", 500, e)
 		}
 
-		return res.status(201).json({ result })
+		return response.success(res, result, "Lead atualizado com sucesso.", 200)
 	} catch(e) {
-		return res.status(400).json({ error: e })
+		return response.error(res, "Erro ao criar novo Lead catch", 500, e)
 	}
 }
 
