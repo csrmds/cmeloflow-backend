@@ -81,10 +81,11 @@ exports.deleteWorkflowClient = async (req, res) => {
 }
 
 exports.verifyWorkflowClient = async (req, res) => {
-	console.log("workflow controller verifyWorkflowClient: ")
-	const { workflowId, clientWhatsapp} = req.params
+	console.log("\nworkflow controller verifyWorkflowClient: ")
+	const { workflowId, clientWhatsapp} = req.body
 	const user_role = req.user.user_role
-	console.log("req params: ", req.params)
+	console.log("req params: ", req.body)
+	console.log("req user: ", req.user)
 
 	if (user_role === "admin" || user_role === "service") {
 		let result
