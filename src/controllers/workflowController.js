@@ -84,7 +84,7 @@ exports.verifyWorkflowClient = async (req, res) => {
 	console.log("workflow controller verifyWorkflowClient: ")
 	const { workflowId, clientWhatsapp} = req.params
 	const user_role = req.user.user_role
-	consoel.log("req params: ", req.params)
+	console.log("req params: ", req.params)
 
 	if (user_role === "admin" || user_role === "service") {
 		let result
