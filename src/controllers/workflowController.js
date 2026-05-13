@@ -84,17 +84,19 @@ exports.verifyWorkflowClient = async (req, res) => {
 	console.log("\nworkflow controller verifyWorkflowClient: ")
 	const { workflowId, clientWhatsapp} = req.body
 	const user_role = req.user.user_role
-	console.log("req params: ", req.body)
+	console.log("req body: ", req.body)
 	console.log("req user: ", req.user)
 
 	if (user_role === "admin" || user_role === "service") {
 		let result
+		const sql= `select * from vw_client_phones_workflows 
+				where c_phones_number = ? and c_workflow_n8n_id = ? and c_phones_is_primary = ? and c_status = ?`
+		const values= [clientWhatsapp, workflowId, 1, "ativo"]
+		const sqlFormat= pool.format(sql, values)
+		console.log("Sql format: ", sqlFormat)
 
 		try {
-			[result] = await pool.query(`select * from vw_client_phones_workflows 
-				where c_phones_number = ? and c_workflow_n8n_id = ? and c_phones_is_primary = ? and c_status = ?`,
-				[clientWhatsapp, workflowId, 1, "ativo", ]
-			)
+			[result] = await pool.query(sql, values)
 
 			console.log("restul SQL: ", result)
 		} catch(e) {
