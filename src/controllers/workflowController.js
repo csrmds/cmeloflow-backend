@@ -86,7 +86,7 @@ exports.verifyWorkflowClient = async (req, res) => {
 	const user_role = req.user.user_role
 	consoel.log("req params: ", req.params)
 
-	if (user_role === "admin") {
+	if (user_role === "admin" || user_role === "service") {
 		let result
 
 		try {
