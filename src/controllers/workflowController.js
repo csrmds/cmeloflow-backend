@@ -25,11 +25,58 @@ exports.listByClientId = async (req, res) => {
 		}
 
 		return response.success(res, rows, "Consulta realizada com sucesso.", 200)
-
 	} else {
 		return response.error(res, "Acesso negado", 401)
 	}
 
+}
+
+exports.addWorkflowClient = async (req, res) => {
+	console.log("workflow controller addWorkflowClient: ", req.user)
+	const { workflowId, clientId, workflowName } = req.body
+	const user_role = req.user.user_role
+
+	if (user_role === "admin") {
+		let result
+		
+		try {
+			[result] = await pool.query(`insert into client_workflows (client_id, workflow_id, workflow_name, active)
+				values ( ?, ?, ?, 'ativo')`, [clientId, workflowId, workflowName])
+
+			if (result.affectedRows === 0 ) {
+				return response.error(res, "Erro ao adicionar workflow para o cliente.", 400, result)
+			}
+		} catch(e) {
+			return response.error(res, "Erro ao adicionar workflow para o cliente.", 400, e)
+		}
+
+		return response.success(res, result, "Workflow adicionado ao cliente com sucesso", 200)
+	} else {
+		return response.error(res, "Acesso negado", 401)
+	}
+}
+
+exports.deleteWorkflowClient = async (req, res) => {
+	console.log("workflow controller deleteWorkflowClient: ", req.user)
+	const workflowId = req.params.id
+	const user_role = req.user.user_role
+
+	if (user_role === "admin") {
+		let result
+
+		try {
+			[result] = await pool.query(`delete from client_workflows where id = ? `, [workflowId])
+			if (result.affectedRows === 0) {
+				return response.error(res, "Erro ao deletar workflow do cliente.", 400, result)
+			}
+		} catch(e) {
+			return response.error(res, "Erro ao deletar workflow do cliente.", 400, e)
+		}
+
+		return response.success(res, result, "Workflow deletado com sucesso", 200)
+	} else {
+		return response.error(res, "Acesso negado", 401)
+	}
 }
 
 

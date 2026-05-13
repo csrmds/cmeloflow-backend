@@ -10,10 +10,12 @@ router.delete('/tags/:id', auth, controller.deleteTag)
 
 //endpoint para consulta por clientId
 router.get('/client/:id', auth, controller.listByClientId)
+router.post('/client', auth, controller.addWorkflowClient)
+router.delete('/client/:id', auth, controller.deleteWorkflowClient)
 
 //endpoints para Workflows
-router.get('/', auth, controller.list)
-router.get('/:id', auth, controller.getById) //get workflow 
+router.get('/', auth, controller.list) //list workflows
+router.get('/:id', auth, controller.getById) //get workflow by id 
 router.get('/:id/tags', auth, controller.getTags) //get tag do workflow
 router.put('/:id/tags', auth, controller.setTags) //set tags do workflow
 
