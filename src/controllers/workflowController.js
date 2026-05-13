@@ -7,8 +7,9 @@ const n8nApiKey = process.env.N8N_APIKEY
 
 
 exports.listByClientId = async (req, res) => {
-	console.log("workflow controller listByClientId: ", req.user)
-	const { clientId } = req.params
+	console.log("workflow controller listByClientId: ")
+	console.log("req Param: ", req.params)
+	const clientId = req.params.id
 	const user_role = req.user.user_role
 
 	if (user_role === "admin") {
@@ -32,7 +33,7 @@ exports.listByClientId = async (req, res) => {
 }
 
 exports.addWorkflowClient = async (req, res) => {
-	console.log("workflow controller addWorkflowClient: ", req.user)
+	console.log("workflow controller addWorkflowClient: ")
 	const { workflowId, clientId, workflowName } = req.body
 	const user_role = req.user.user_role
 
@@ -41,7 +42,7 @@ exports.addWorkflowClient = async (req, res) => {
 		
 		try {
 			[result] = await pool.query(`insert into client_workflows (client_id, workflow_id, workflow_name, active)
-				values ( ?, ?, ?, 'ativo')`, [clientId, workflowId, workflowName])
+				values ( ?, ?, ?, '1')`, [clientId, workflowId, workflowName])
 
 			if (result.affectedRows === 0 ) {
 				return response.error(res, "Erro ao adicionar workflow para o cliente.", 400, result)
@@ -57,7 +58,7 @@ exports.addWorkflowClient = async (req, res) => {
 }
 
 exports.deleteWorkflowClient = async (req, res) => {
-	console.log("workflow controller deleteWorkflowClient: ", req.user)
+	console.log("workflow controller deleteWorkflowClient: ")
 	const workflowId = req.params.id
 	const user_role = req.user.user_role
 
@@ -74,6 +75,32 @@ exports.deleteWorkflowClient = async (req, res) => {
 		}
 
 		return response.success(res, result, "Workflow deletado com sucesso", 200)
+	} else {
+		return response.error(res, "Acesso negado", 401)
+	}
+}
+
+exports.verifyWorkflowClient = async (req, res) => {
+	console.log("workflow controller verifyWorkflowClient: ")
+	const { workflowId, clientWhatsapp} = req.params
+	const user_role = req.user.user_role
+	consoel.log("req params: ", req.params)
+
+	if (user_role === "admin") {
+		let result
+
+		try {
+			[result] = await pool.query(`select * from vw_client_phones_workflows 
+				where c_phones_number = ? and c_workflow_n8n_id = ? and c_phones_is_primary = ? and c_status = ?`,
+				[clientWhatsapp, workflowId, 1, "ativo", ]
+			)
+
+			console.log("restul SQL: ", result)
+		} catch(e) {
+			return response.error(res, "Erro ao verificar workflow do cliente.", 400, e)
+		}
+
+		return response.success(res, result, "Consulta realizada com sucesso", 200)
 	} else {
 		return response.error(res, "Acesso negado", 401)
 	}
