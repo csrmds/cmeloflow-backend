@@ -9,10 +9,10 @@ router.post('/tags', auth, controller.createTag)
 router.delete('/tags/:id', auth, controller.deleteTag)
 
 //endpoint para consulta por clientId
+router.get('/client/verify-workflow/', auth, controller.verifyWorkflowClient)
 router.get('/client/:id', auth, controller.listByClientId)
 router.post('/client', auth, controller.addWorkflowClient)
 router.delete('/client/:id', auth, controller.deleteWorkflowClient)
-router.get('/client/verify-workflow/', auth, controller.verifyWorkflowClient)
 
 //endpoints para Workflows
 router.get('/', auth, controller.list) //list workflows
