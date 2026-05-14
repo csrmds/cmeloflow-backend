@@ -90,7 +90,7 @@ exports.verifyWorkflowClient = async (req, res) => {
 	if (user_role === "admin" || user_role === "service") {
 		let result
 		const sql= `select * from vw_client_phones_workflows 
-				where c_phones_number = ? and c_workflow_n8n_id = ? and c_phones_is_primary = ? and c_status = ?`
+				where c_phones_number = ? and c_workflow_n8n_id = ? and c_phones_is_primary = ? and c_status = ? limit 1`
 		const values= [clientWhatsapp, workflowId, 1, "ativo"]
 		const sqlFormat= pool.format(sql, values)
 		console.log("Sql format: ", sqlFormat)
@@ -111,34 +111,30 @@ exports.verifyWorkflowClient = async (req, res) => {
 
 
 exports.list = async (req, res) => {
-	//console.log("workflow controller list: ", req.user)
+	console.log("\nworkflow controller list: ", req.user)
 	const client_id = req.user.client_id
 	const user_role = req.user.user_role
 	const axiosOptions = {
 		method: 'GET',
 		url: `https://${n8nSubDomain}.${domainPublicName}/api/v1/workflows`,
-		params: {
-			active: 'true',
-			tags: 'published',
-			//name: 'My Workflow',
-			//projectId: 'VmwOO9HeTEj20kxM',
-			//excludePinnedData: 'true',
-			//limit: '100',
-			//cursor: '0'
-		},
+		params: { active: 'true', tags: 'published', },
 		headers: { 'x-n8n-api-key': n8nApiKey}
 	}
 
+	console.log("Axios Options: ", axiosOptions)
+
 	if (user_role === "admin") {
+		let data
 
 		try {
-			const { data }  = await axios.request(axiosOptions)
-			return response.success(res, data.data, "Consulta realizada com sucesso.", 200)
+			data  = await axios.request(axiosOptions)
+			console.log("data result: ", data)
 		} catch(e) {
 			//console.log("Log Error: ", e)
 			return response.error(res, "Erro ao consultar workflows", 500, e)
 		}
 
+		return response.success(res, data.data, "Consulta realizada com sucesso.", 200)
 	} else {
 		return response.error(res, "Acesso negado", 401)
 	}

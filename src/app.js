@@ -2,6 +2,12 @@ const express = require('express');
 const session = require('express-session');
 const { passport } = require('./config/passport')
 const app = express();
+const authRoutes = require('./routes/authRoutes');
+const productRoutes = require('./routes/productRoutes');
+const leadRoutes = require('./routes/leadRoutes');
+const clientRoutes = require('./routes/clientRoutes');
+const workflowRoutes = require('./routes/workflowRoutes');
+const sessionRoutes = require('./routes/sessionRoutes')
 
 //CONFIG CORS
 app.use((req, res, next) => {
@@ -20,17 +26,14 @@ app.use(passport.initialize())
 
 app.use(express.json());
 
-const authRoutes = require('./routes/authRoutes');
-const productRoutes = require('./routes/productRoutes');
-const leadRoutes = require('./routes/leadRoutes');
-const clientRoutes = require('./routes/clientRoutes');
-const workflowRoutes = require('./routes/workflowRoutes');
+
 
 app.use('/auth', authRoutes);
 app.use('/products', productRoutes);
 app.use('/leads', leadRoutes);
 app.use('/clients', clientRoutes);
 app.use('/workflow', workflowRoutes);
+app.use('/session', sessionRoutes)
 
 
 app.get('/teste', (req, res) => {
