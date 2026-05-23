@@ -18,4 +18,4 @@ jobs:
             cd /docker/cmeloflow/backend
             git pull origin main
             cd ..
-            docker compose up -d --build cmeloflow_backend
+            docker compose up -d --build backend
