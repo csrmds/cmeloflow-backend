@@ -46,19 +46,19 @@ exports.init = async (req, res) => {
 
 	const conn = await pool.getConnection();
 	try {
-		// ── 1. Busca o cliente ──────────────────────────────────────────────────
+		// ── 1. Busca o cliente via view (phones + workflows) ────────────────────
 		let clientRows;
 		if (source === 'whatsapp') {
 			if (!client_whatsapp) return response.error(res, 'client_whatsapp é obrigatório para source=whatsapp', 400);
 			[clientRows] = await conn.query(
-				'SELECT id, name, about, whatsapp_number, instagram_id, instagram_username, status FROM clients WHERE whatsapp_number = ?',
-				[client_whatsapp]
+				`SELECT * FROM vw_client_phones_workflows WHERE c_phones_number = ? AND c_phones_is_primary = 1 AND c_workflow_n8n_id = ?`,
+				[client_whatsapp, workflow_id]
 			);
 		} else {
 			if (!instagram_user_id) return response.error(res, 'instagram_user_id é obrigatório para source instagram/comment', 400);
 			[clientRows] = await conn.query(
-				'SELECT id, name, about, whatsapp_number, instagram_id, instagram_username, status FROM clients WHERE instagram_id = ?',
-				[instagram_user_id]
+				`SELECT * FROM vw_client_phones_workflows WHERE c_instagram_id = ? AND c_phones_is_primary = 1 AND c_workflow_n8n_id = ?`,
+				[instagram_user_id, workflow_id]
 			);
 		}
 
@@ -68,17 +68,12 @@ exports.init = async (req, res) => {
 		const client = clientRows[0];
 
 		// ── 2. Verifica se o cliente está ativo ─────────────────────────────────
-		if (client.status !== 'ativo') {
+		if (client.c_status !== 'ativo') {
 			return response.error(res, 'Cliente inativo', 403);
 		}
 
 		// ── 3. Verifica se o workflow está vinculado e ativo para o cliente ──────
-		const [wfRows] = await conn.query(
-			'SELECT id, active FROM client_workflows WHERE client_id = ? AND workflow_id = ?',
-			[client.id, workflow_id]
-		);
-
-		if (wfRows.length === 0 || !Number(wfRows[0].active)) {
+		if (!Number(client.c_workflow_active)) {
 			return response.error(res, 'Workflow não encontrado ou inativo para este cliente', 403);
 		}
 
@@ -88,13 +83,13 @@ exports.init = async (req, res) => {
 			[leadRows] = await conn.query(
 				`SELECT id, name, whatsapp_number, instagram_username, status, human_handover
          FROM leads WHERE client_id = ? AND whatsapp_number = ?`,
-				[client.id, lead_whatsapp]
+				[client.c_id, lead_whatsapp]
 			);
 		} else {
 			[leadRows] = await conn.query(
 				`SELECT id, name, whatsapp_number, instagram_username, status, human_handover
          FROM leads WHERE client_id = ? AND instagram_scoped_userid = ?`,
-				[client.id, instagram_scoped_userid]
+				[client.c_id, instagram_scoped_userid]
 			);
 		}
 
@@ -109,7 +104,7 @@ exports.init = async (req, res) => {
             whatsapp_number, first_message, last_message, source, status, human_handover)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'novo', 0)`,
 				[
-					client.id,
+					client.c_id,
 					instagram_scoped_userid ?? null,
 					instagram_username ?? null,
 					lead_name ?? null,
@@ -142,18 +137,18 @@ exports.init = async (req, res) => {
 		// ── 5. Carrega produtos ativos do cliente ───────────────────────────────
 		const [products] = await conn.query(
 			'SELECT id, name, description, price, type, keywords FROM products WHERE client_id = ? AND active = 1',
-			[client.id]
+			[client.c_id]
 		);
 
 		// ── 6. Retorna tudo ─────────────────────────────────────────────────────
 		return response.success(res, {
 			client: {
-				id: client.id,
-				name: client.name,
-				about: client.about,
-				whatsapp_number: client.whatsapp_number,
-				instagram_id: client.instagram_id,
-				instagram_username: client.instagram_username,
+				id: client.c_id,
+				name: client.c_name,
+				about: client.c_about,
+				whatsapp_number: client.c_phones_number,
+				instagram_id: client.c_instagram_id,
+				instagram_username: client.c_instagram_username,
 			},
 			workflow: { active: true },
 			lead: { ...lead, is_new },
