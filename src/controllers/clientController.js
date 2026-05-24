@@ -37,16 +37,15 @@ exports.create = async (req, res) => {
     instagram_username,
     instagram_name,
     instagram_photo,
-    whatsapp_number,
     status,
   } = req.body;
 
   try {
     const [result] = await pool.query(
       `INSERT INTO clients 
-        (name, email, instagram_id, instagram_username, instagram_name, instagram_photo, whatsapp_number, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [name, email, instagram_id, instagram_username, instagram_name, instagram_photo, whatsapp_number, status ?? null]
+        (name, email, instagram_id, instagram_username, instagram_name, instagram_photo, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [name, email, instagram_id, instagram_username, instagram_name, instagram_photo, status ?? null]
     );
 
     const [newClient] = await pool.query('SELECT * FROM clients WHERE id = ?', [result.insertId]);
@@ -68,7 +67,6 @@ exports.update = async (req, res) => {
     instagram_username,
     instagram_name,
     instagram_photo,
-    whatsapp_number,
     status,
     about,
   } = req.body;
@@ -77,9 +75,9 @@ exports.update = async (req, res) => {
     const [result] = await pool.query(
       `UPDATE clients SET
         name = ?, email = ?, instagram_id = ?, instagram_username = ?,
-        instagram_name = ?, instagram_photo = ?, whatsapp_number = ?, status = ?, about = ?
+        instagram_name = ?, instagram_photo = ?, status = ?, about = ?
        WHERE id = ?`,
-      [name, email, instagram_id, instagram_username, instagram_name, instagram_photo, whatsapp_number, status, about, id]
+      [name, email, instagram_id, instagram_username, instagram_name, instagram_photo, status, about, id]
     );
 
     if (!result.affectedRows) return res.status(404).json({ error: 'Cliente não encontrado' });

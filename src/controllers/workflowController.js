@@ -111,7 +111,7 @@ exports.verifyWorkflowClient = async (req, res) => {
 
 
 exports.list = async (req, res) => {
-	console.log("\nworkflow controller list: ", req.user)
+	console.log("\nworkflow controller list: ")
 	const client_id = req.user.client_id
 	const user_role = req.user.user_role
 	const axiosOptions = {
@@ -121,20 +121,20 @@ exports.list = async (req, res) => {
 		headers: { 'x-n8n-api-key': n8nApiKey}
 	}
 
-	console.log("Axios Options: ", axiosOptions)
+	//console.log("Axios Options: ", axiosOptions)
 
 	if (user_role === "admin") {
-		let data
 
 		try {
-			data  = await axios.request(axiosOptions)
-			console.log("data result: ", data)
+			const { data }  = await axios.request(axiosOptions)
+			console.log("data result: ", data.data)
+
+			return response.success(res, data.data, "Consulta realizada com sucesso.", 200)
 		} catch(e) {
 			//console.log("Log Error: ", e)
 			return response.error(res, "Erro ao consultar workflows", 500, e)
 		}
-
-		return response.success(res, data.data, "Consulta realizada com sucesso.", 200)
+		
 	} else {
 		return response.error(res, "Acesso negado", 401)
 	}
