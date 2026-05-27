@@ -77,6 +77,15 @@ exports.init = async (req, res) => {
 			return response.error(res, 'Workflow não encontrado ou inativo para este cliente', 403);
 		}
 
+		// ── 1.2 Verifica se o cliente tem um segundo numero de atendimento ────────
+		let clientWhatsappN2
+		if (source === 'whatsapp') {
+			[clientWhatsappN2] = await conn.query('select * from vw_client_phones_workflow where c_id = ? and c_phones_label = "atendimento n2" limit 1',
+				[client.c_id]
+			)
+		}
+		const whatsappN2 = clientWhatsappN2[0]
+
 		// ── 4. Busca ou cria o lead ─────────────────────────────────────────────
 		let leadRows;
 		if (source === 'whatsapp') {
@@ -147,6 +156,7 @@ exports.init = async (req, res) => {
 				name: client.c_name,
 				about: client.c_about,
 				whatsapp_number: client.c_phones_number,
+				whatsapp_number_n2: whatsappN2.c_phones_number,
 				instagram_id: client.c_instagram_id,
 				instagram_username: client.c_instagram_username,
 			},
