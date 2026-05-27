@@ -89,7 +89,7 @@ exports.init = async (req, res) => {
 				[client.c_id]
 			)
 		}
-		const whatsappN2 = clientWhatsappN2[0]
+		const whatsappN2 = clientWhatsappN2?.[0] ?? null;
 
 		// ── 4. Busca ou cria o lead ─────────────────────────────────────────────
 		let leadRows;
@@ -161,7 +161,7 @@ exports.init = async (req, res) => {
 				name: client.c_name,
 				about: client.c_about,
 				whatsapp_number: client.c_phones_number,
-				whatsapp_number_n2: whatsappN2.c_phones_number,
+				whatsapp_number_n2: whatsappN2?.c_phones_number ?? null,
 				instagram_id: client.c_instagram_id,
 				instagram_username: client.c_instagram_username,
 			},
