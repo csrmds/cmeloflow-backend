@@ -54,6 +54,11 @@ exports.init = async (req, res) => {
 				`SELECT * FROM vw_client_phones_workflows WHERE c_phones_number = ? AND c_phones_is_primary = 1 AND c_workflow_n8n_id = ?`,
 				[client_whatsapp, workflow_id]
 			);
+
+			// console.log(pool.format(
+			// 	`SELECT * FROM vw_client_phones_workflows WHERE c_phones_number = ? AND c_phones_is_primary = 1 AND c_workflow_n8n_id = ?`,
+			// 	[client_whatsapp, workflow_id]
+			// ))
 		} else {
 			if (!instagram_user_id) return response.error(res, 'instagram_user_id é obrigatório para source instagram/comment', 400);
 			[clientRows] = await conn.query(
@@ -80,7 +85,7 @@ exports.init = async (req, res) => {
 		// ── 1.2 Verifica se o cliente tem um segundo numero de atendimento ────────
 		let clientWhatsappN2
 		if (source === 'whatsapp') {
-			[clientWhatsappN2] = await conn.query('select * from vw_client_phones_workflow where c_id = ? and c_phones_label = "atendimento n2" limit 1',
+			[clientWhatsappN2] = await conn.query('select * from vw_client_phones_workflows where c_id = ? and c_phones_label = "atendimento n2" limit 1',
 				[client.c_id]
 			)
 		}
