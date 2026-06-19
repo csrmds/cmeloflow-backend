@@ -1,10 +1,17 @@
 const { default: axios, options } = require('axios')
 const pool = require('../config/database');
 const response = require('../utils/response')
+const clientWorkflowService = require('../services/clientWorkflowService')
 const n8nSubDomain = process.env.N8N_SUBDOMAIN
 const domainPublicName = process.env.DOMAIN_PUBLIC_NAME
 const n8nApiKey = process.env.N8N_APIKEY
 
+function handleServiceError(res, err, fallbackMessage = 'Erro inesperado') {
+	if (err instanceof clientWorkflowService.ServiceError) {
+		return response.error(res, err.message, err.statusCode, err)
+	}
+	return response.error(res, fallbackMessage, 500, err)
+}
 
 exports.listByClientId = async (req, res) => {
 	console.log("workflow controller listByClientId: ")
@@ -12,48 +19,34 @@ exports.listByClientId = async (req, res) => {
 	const clientId = req.params.id
 	const user_role = req.user.user_role
 
-	if (user_role === "admin") {
-		let rows
-		
-		try {
-			[rows] = await pool.query(`select * from client_workflows where client_id = ?`, [clientId])
-			console.log("Rows: ", rows)
-			if (rows.length=== 0) {
-				return response.success(res, [], "Não foi encontrado workflows para esse cliente.", 200)
-			}
-		} catch(e) {
-			return response.error(res, "Erro ao consultar workflows.", 400, e)
-		}
-
-		return response.success(res, rows, "Consulta realizada com sucesso.", 200)
-	} else {
+	if (user_role !== "admin") {
 		return response.error(res, "Acesso negado", 401)
 	}
 
+	try {
+		const rows = await clientWorkflowService.listByClientId(clientId)
+		if (rows.length === 0) {
+			return response.success(res, [], "Não foi encontrado workflows para esse cliente.", 200)
+		}
+		return response.success(res, rows, "Consulta realizada com sucesso.", 200)
+	} catch (e) {
+		return handleServiceError(res, e, "Erro ao consultar workflows.")
+	}
 }
 
 exports.addWorkflowClient = async (req, res) => {
 	console.log("workflow controller addWorkflowClient: ")
-	const { workflowId, clientId, workflowName } = req.body
 	const user_role = req.user.user_role
 
-	if (user_role === "admin") {
-		let result
-		
-		try {
-			[result] = await pool.query(`insert into client_workflows (client_id, workflow_id, workflow_name, active)
-				values ( ?, ?, ?, '1')`, [clientId, workflowId, workflowName])
-
-			if (result.affectedRows === 0 ) {
-				return response.error(res, "Erro ao adicionar workflow para o cliente.", 400, result)
-			}
-		} catch(e) {
-			return response.error(res, "Erro ao adicionar workflow para o cliente.", 400, e)
-		}
-
-		return response.success(res, result, "Workflow adicionado ao cliente com sucesso", 200)
-	} else {
+	if (user_role !== "admin") {
 		return response.error(res, "Acesso negado", 401)
+	}
+
+	try {
+		const result = await clientWorkflowService.addWorkflowClient(req.body)
+		return response.success(res, result, "Workflow adicionado ao cliente com sucesso", 200)
+	} catch (e) {
+		return handleServiceError(res, e, "Erro ao adicionar workflow para o cliente.")
 	}
 }
 
@@ -62,53 +55,40 @@ exports.deleteWorkflowClient = async (req, res) => {
 	const workflowId = req.params.id
 	const user_role = req.user.user_role
 
-	if (user_role === "admin") {
-		let result
-
-		try {
-			[result] = await pool.query(`delete from client_workflows where id = ? `, [workflowId])
-			if (result.affectedRows === 0) {
-				return response.error(res, "Erro ao deletar workflow do cliente.", 400, result)
-			}
-		} catch(e) {
-			return response.error(res, "Erro ao deletar workflow do cliente.", 400, e)
-		}
-
-		return response.success(res, result, "Workflow deletado com sucesso", 200)
-	} else {
+	if (user_role !== "admin") {
 		return response.error(res, "Acesso negado", 401)
+	}
+
+	try {
+		const result = await clientWorkflowService.deleteWorkflowClient(workflowId)
+		return response.success(res, result, "Workflow deletado com sucesso", 200)
+	} catch (e) {
+		return handleServiceError(res, e, "Erro ao deletar workflow do cliente.")
 	}
 }
 
 exports.verifyWorkflowClient = async (req, res) => {
 	console.log("\nworkflow controller verifyWorkflowClient: ")
-	const { workflowId, clientWhatsapp} = req.body
 	const user_role = req.user.user_role
 	console.log("req body: ", req.body)
 	console.log("req user: ", req.user)
 
-	if (user_role === "admin" || user_role === "service") {
-		let result
-		const sql= `select * from vw_client_phones_workflows 
-				where c_phones_number = ? and c_workflow_n8n_id = ? and c_phones_is_primary = ? and c_status = ? limit 1`
-		const values= [clientWhatsapp, workflowId, 1, "ativo"]
-		const sqlFormat= pool.format(sql, values)
-		console.log("Sql format: ", sqlFormat)
-
-		try {
-			[result] = await pool.query(sql, values)
-
-			console.log("restul SQL: ", result)
-		} catch(e) {
-			return response.error(res, "Erro ao verificar workflow do cliente.", 400, e)
-		}
-
-		return response.success(res, result, "Consulta realizada com sucesso", 200)
-	} else {
+	if (user_role !== "admin" && user_role !== "service") {
 		return response.error(res, "Acesso negado", 401)
+	}
+
+	try {
+		const result = await clientWorkflowService.verifyWorkflowClient(req.body)
+		return response.success(res, result, "Consulta realizada com sucesso", 200)
+	} catch (e) {
+		return handleServiceError(res, e, "Erro ao verificar workflow do cliente.")
 	}
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// As funções abaixo são integração direta com a API do n8n (axios), não
+// regra de negócio local — por isso permanecem no controller, sem service.
+// ──────────────────────────────────────────────────────────────────────────
 
 exports.list = async (req, res) => {
 	console.log("\nworkflow controller list: ")
@@ -121,8 +101,6 @@ exports.list = async (req, res) => {
 		headers: { 'x-n8n-api-key': n8nApiKey}
 	}
 
-	//console.log("Axios Options: ", axiosOptions)
-
 	if (user_role === "admin") {
 
 		try {
@@ -131,7 +109,6 @@ exports.list = async (req, res) => {
 
 			return response.success(res, data.data, "Consulta realizada com sucesso.", 200)
 		} catch(e) {
-			//console.log("Log Error: ", e)
 			return response.error(res, "Erro ao consultar workflows", 500, e)
 		}
 		
@@ -143,7 +120,6 @@ exports.list = async (req, res) => {
 
 
 exports.getById = async (req, res) => {
-	//console.log("workflow controller getById: ", req.user)
 	const client_id = req.user.client_id
 	const user_role = req.user.user_role
 	const workflowId= req.params.id || null
@@ -160,7 +136,6 @@ exports.getById = async (req, res) => {
 			const { data }  = await axios.request(axiosOptions)
 			return response.success(res, data.data, "Consulta realizada com sucesso.", 200)
 		} catch(e) {
-			//console.log("Log Error: ", e)
 			return response.error(res, "Erro ao consultar workflow", 500, e)
 		}
 
@@ -172,7 +147,6 @@ exports.getById = async (req, res) => {
 
 
 exports.getTags = async (req, res) => {
-	//console.log("workflow controller getTags: ", req.user)
 	const client_id = req.user.client_id
 	const user_role = req.user.user_role
 	const workflowId= req.params.workflowId || null
@@ -198,7 +172,6 @@ exports.getTags = async (req, res) => {
 
 
 exports.setTags = async (req, res) => {
-	//console.log("workflow controller setTags: ", req.user)
 	const client_id = req.user.client_id
 	const user_role = req.user.user_role
 	const workflowId= req.params.id || null
@@ -238,12 +211,9 @@ exports.listTags = async (req, res) => {
 		url: `https://${n8nSubDomain}.${domainPublicName}/api/v1/tags`,
 		params: {
 			limit: '100',
-			//cursor: ''
 		},
 		headers: { 'x-n8n-api-key': n8nApiKey }
 	}
-
-	console.log("axiosOptions: ", axiosOptions)
 
 	if (user_role === "admin") {
 
@@ -263,7 +233,6 @@ exports.listTags = async (req, res) => {
 
 
 exports.createTag = async (req, res) => {
-	//console.log("workflow controller createTag: ", req.user)
 	const client_id = req.user.client_id
 	const user_role = req.user.user_role
 	const tagName= req.params.tagName
@@ -293,7 +262,6 @@ exports.createTag = async (req, res) => {
 }
 
 exports.deleteTag = async (req, res) => {
-	//console.log("workflow controller deleteTag: ", req.user)
 	const client_id = req.user.client_id
 	const user_role = req.user.user_role
 	const tagId = req.params.tagId

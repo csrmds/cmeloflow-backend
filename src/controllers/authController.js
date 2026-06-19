@@ -1,47 +1,26 @@
-const pool = require('../config/database');
-const bcrypt = require('bcrypt');
-const { generateToken } = require('../utils/jwt');
+const authService = require('../services/authService');
+
+function handleError(res, err, fallbackMessage = 'Erro inesperado') {
+  if (err instanceof authService.ServiceError) {
+	 return res.status(err.statusCode).json({ error: err.message });
+  }
+  return res.status(500).json({ error: err.message ?? fallbackMessage });
+}
 
 exports.register = async (req, res) => {
-	const { email, password, client_id, name } = req.body;
-
-	try {
-		const hash = await bcrypt.hash(password, 10);
-
-		const [result] = await pool.query(
-			`INSERT INTO users (email, password_hash, client_id, name, provider)
-       VALUES (?, ?, ?, ?, 'local')`,
-			[email, hash, client_id, name]
-		);
-
-		return res.json({ message: 'Usuário criado' });
-	} catch (err) {
-		return res.status(500).json({ error: err.message });
-	}
+  try {
+	 const result = await authService.register(req.body);
+	 return res.json(result);
+  } catch (err) {
+	 return handleError(res, err);
+  }
 };
 
 exports.login = async (req, res) => {
-	const { email, password } = req.body;
-
-	try {
-		const [rows] = await pool.query(`SELECT * FROM users WHERE email = ?`, [email]);
-
-		const user = rows[0];
-
-		if (!user) {
-			return res.status(400).json({ error: 'Usuário não encontrado' });
-		}
-
-		const valid = await bcrypt.compare(password, user.password_hash);
-
-		if (!valid) {
-			return res.status(400).json({ error: 'Senha inválida' });
-		}
-
-		const token = generateToken(user);
-
-		return res.json({ token });
-	} catch (err) {
-		return res.status(500).json({ error: err.message });
-	}
+  try {
+	 const result = await authService.login(req.body);
+	 return res.json(result);
+  } catch (err) {
+	 return handleError(res, err);
+  }
 };

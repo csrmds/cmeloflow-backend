@@ -1,103 +1,58 @@
-const pool = require('../config/database');
+const clientService = require('../services/clientService');
+
+function handleError(res, err, fallbackMessage = 'Erro inesperado') {
+  if (err instanceof clientService.ServiceError) {
+	 return res.status(err.statusCode).json({ error: err.message });
+  }
+  return res.status(500).json({ error: err.message ?? fallbackMessage });
+}
 
 // GET /clients
 exports.list = async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      'SELECT * FROM clients ORDER BY created_at DESC'
-    );
-    return res.json(rows);
+	 const rows = await clientService.list();
+	 return res.json(rows);
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+	 return handleError(res, err);
   }
 };
 
 // GET /clients/:id
 exports.getById = async (req, res) => {
-  const { id } = req.params;
-
   try {
-    const [rows] = await pool.query(
-      'SELECT * FROM clients WHERE id = ?',
-      [id]
-    );
-    if (!rows.length) return res.status(404).json({ error: 'Cliente não encontrado' });
-    return res.json(rows[0]);
+	 const client = await clientService.getById(req.params.id);
+	 return res.json(client);
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+	 return handleError(res, err);
   }
 };
 
 // POST /clients
 exports.create = async (req, res) => {
-  const {
-    name,
-    email,
-    instagram_id,
-    instagram_username,
-    instagram_name,
-    instagram_photo,
-    status,
-  } = req.body;
-
   try {
-    const [result] = await pool.query(
-      `INSERT INTO clients 
-        (name, email, instagram_id, instagram_username, instagram_name, instagram_photo, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [name, email, instagram_id, instagram_username, instagram_name, instagram_photo, status ?? null]
-    );
-
-    const [newClient] = await pool.query('SELECT * FROM clients WHERE id = ?', [result.insertId]);
-    return res.status(201).json(newClient[0]);
+	 const newClient = await clientService.create(req.body);
+	 return res.status(201).json(newClient);
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+	 return handleError(res, err);
   }
 };
 
 // PUT /clients/:id
 exports.update = async (req, res) => {
-  // console.log("client update controller: ", req.body)
-  // console.log("req params: ", req.params.id)
-  const id = req.params.id;
-  const {
-    name,
-    email,
-    instagram_id,
-    instagram_username,
-    instagram_name,
-    instagram_photo,
-    status,
-    about,
-  } = req.body;
-
   try {
-    const [result] = await pool.query(
-      `UPDATE clients SET
-        name = ?, email = ?, instagram_id = ?, instagram_username = ?,
-        instagram_name = ?, instagram_photo = ?, status = ?, about = ?
-       WHERE id = ?`,
-      [name, email, instagram_id, instagram_username, instagram_name, instagram_photo, status, about, id]
-    );
-
-    if (!result.affectedRows) return res.status(404).json({ error: 'Cliente não encontrado' });
-
-    const [updated] = await pool.query('SELECT * FROM clients WHERE id = ?', [id]);
-    return res.json(updated[0]);
+	 const updated = await clientService.update(req.params.id, req.body);
+	 return res.json(updated);
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+	 return handleError(res, err);
   }
 };
 
 // DELETE /clients/:id
 exports.remove = async (req, res) => {
-  const { id } = req.params;
-
   try {
-    const [result] = await pool.query('DELETE FROM clients WHERE id = ?', [id]);
-    if (!result.affectedRows) return res.status(404).json({ error: 'Cliente não encontrado' });
-    return res.json({ message: 'Cliente removido com sucesso' });
+	 await clientService.remove(req.params.id);
+	 return res.json({ message: 'Cliente removido com sucesso' });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+	 return handleError(res, err);
   }
 };
