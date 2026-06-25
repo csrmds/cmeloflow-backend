@@ -19,13 +19,22 @@ exports.create = async (req, res) => {
 
 exports.list = async (req, res) => {
   try {
-    const clientWhatsapp = req.body?.client_whatsapp || null;
-    const rows = await productService.list(req.user, clientWhatsapp);
+    //const clientWhatsapp = req.body?.client_whatsapp || null;
+    const rows = await productService.list(req.user);
     return response.success(res, rows, 'Consulta realizada com sucesso', 200);
   } catch (err) {
     return handleError(res, err, 'Erro ao listar produtos');
   }
 };
+
+exports.getById = async (req, res) => {
+	try {
+		const result = await productService.getById(req.user, req.params.id)
+		return response.success(res, result, 'Produto encontrado')
+	} catch (err) {
+		return handleError(res, err, 'Erro ao procurar o produto');
+	}
+}
 
 exports.update = async (req, res) => {
   try {
