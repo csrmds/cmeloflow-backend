@@ -1,19 +1,13 @@
 const clientService = require('../services/clientService');
-
-function handleError(res, err, fallbackMessage = 'Erro inesperado') {
-  if (err instanceof clientService.ServiceError) {
-	 return res.status(err.statusCode).json({ error: err.message });
-  }
-  return res.status(500).json({ error: err.message ?? fallbackMessage });
-}
+const response = require('../utils/response');
 
 // GET /clients
 exports.list = async (req, res) => {
   try {
 	 const rows = await clientService.list();
-	 return res.json(rows);
+	 return response.success(res, rows, 'Lista consultada com sucesso', 200)
   } catch (err) {
-	 return handleError(res, err);
+	 return response.handleError(res, err, 'Erro ao listar clientes');
   }
 };
 
@@ -21,9 +15,9 @@ exports.list = async (req, res) => {
 exports.getById = async (req, res) => {
   try {
 	 const client = await clientService.getById(req.params.id);
-	 return res.json(client);
+	 return response.success(res, client, 'Cliente consultado com sucesso', 200)
   } catch (err) {
-	 return handleError(res, err);
+	 return response.handleError(res, err, 'Erro ao consultar cliente');
   }
 };
 
@@ -31,9 +25,10 @@ exports.getById = async (req, res) => {
 exports.create = async (req, res) => {
   try {
 	 const newClient = await clientService.create(req.body);
-	 return res.status(201).json(newClient);
+	 //return res.status(201).json(newClient);
+	 return response.success(res, newCliente, 'Cliente cadastrado com sucesso', 201)
   } catch (err) {
-	 return handleError(res, err);
+	 return response.handleError(res, err, 'Erro ao criar cliente');
   }
 };
 
@@ -41,9 +36,9 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
 	 const updated = await clientService.update(req.params.id, req.body);
-	 return res.json(updated);
+	 return response.success(res, updated, 'Cliente atualizado com sucesso', 200)
   } catch (err) {
-	 return handleError(res, err);
+	 return response.handleError(res, err, 'Erro ao atualizar cliente');
   }
 };
 
@@ -51,8 +46,9 @@ exports.update = async (req, res) => {
 exports.remove = async (req, res) => {
   try {
 	 await clientService.remove(req.params.id);
-	 return res.json({ message: 'Cliente removido com sucesso' });
+	 //return res.json({ message: 'Cliente removido com sucesso' });
+	 return response.success(res, {}, 'Cliente removido com sucesso', 204)
   } catch (err) {
-	 return handleError(res, err);
+	 return response.handleError(res, err, 'Erro ao remover cliente');
   }
 };

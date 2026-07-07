@@ -1,12 +1,5 @@
 const pool = require('../config/database');
-
-class ServiceError extends Error {
-	constructor(message, statusCode = 500) {
-		super(message);
-		this.name = 'ServiceError';
-		this.statusCode = statusCode;
-	}
-}
+const ServiceError = require('../utils/ServiceError');
 
 /**
  * Cria um produto para o cliente autenticado.
@@ -39,14 +32,14 @@ async function create(user, data) {
  * @param {string|null} clientWhatsapp
  */
 async function list(user) {
-	console.log("product Service params: ", user)
+	//console.log("product Service params: ", user)
 	const { client_id, user_role } = user;
 
-	console.log("Client_id: ", client_id, "\nuser_role: ", user_role)
+	//console.log("Client_id: ", client_id, "\nuser_role: ", user_role)
 
 
 	if (user_role === 'client') {
-		const [rows] = await pool.query( `SELECT * FROM products WHERE client_id = ?`, [client_id]);
+		const [rows] = await pool.query(`SELECT * FROM products WHERE client_id = ?`, [client_id]);
 		return rows;
 	}
 
@@ -81,8 +74,9 @@ async function list(user) {
 async function getById(user, id) {
 	const { client_id, user_role } = user
 
-	console.log("\n\nproductService params: ", user, "\nID: ", id)
-	
+	//console.log("\n\nproductService params: ", user, "\nID: ", id)
+	//console.log("\n\nproductService ")
+
 	let row
 
 	if (user_role === 'client') {
@@ -93,9 +87,10 @@ async function getById(user, id) {
 		throw new ServiceError('Acesso negado', 403)
 	}
 
-	console.log("row.length: ",row.length)
+	//console.log("row.length: ",row.length)
 
-	if (row.length === 0 ) {
+
+	if (row.length === 0) {
 		throw new ServiceError('Erro ao consultar produto', 404)
 	}
 

@@ -1,11 +1,6 @@
 const clientPhoneService = require('../services/clientPhoneService');
+const response = require('../utils/response');
 
-function handleError(res, err, fallbackMessage = 'Erro inesperado') {
-	if (err instanceof clientPhoneService.ServiceError) {
-		return res.status(err.statusCode).json({ error: err.message });
-	}
-	return res.status(500).json({ error: err.message ?? fallbackMessage });
-}
 
 // GET /clients/:clientId/phones
 // Query param opcional: ?role=ai|human
@@ -15,9 +10,9 @@ exports.list = async (req, res) => {
 
 	try {
 		const rows = await clientPhoneService.list(clientId, { role });
-		return res.json(rows);
+		return response.success(res, rows, '', 200)
 	} catch (err) {
-		return handleError(res, err);
+		return response.handleError(res, err);
 	}
 };
 
@@ -27,9 +22,9 @@ exports.getById = async (req, res) => {
 
 	try {
 		const phone = await clientPhoneService.getById(clientId, id);
-		return res.json(phone);
+		return response.success(res, phone, '', 200)
 	} catch (err) {
-		return handleError(res, err);
+		return response.handleError(res, err);
 	}
 };
 
@@ -39,9 +34,9 @@ exports.create = async (req, res) => {
 
 	try {
 		const newPhone = await clientPhoneService.create(clientId, req.body);
-		return res.status(201).json(newPhone);
+		return response.success(res, newPhone, 'Telefone cadastrado com sucesso', 201)
 	} catch (err) {
-		return handleError(res, err);
+		return response.handleError(res, err);
 	}
 };
 
@@ -51,9 +46,9 @@ exports.update = async (req, res) => {
 
 	try {
 		const updated = await clientPhoneService.update(clientId, id, req.body);
-		return res.json(updated);
+		return response.success(res, updated, 'Telefone atualizado com sucesso', 200)
 	} catch (err) {
-		return handleError(res, err);
+		return response.handleError(res, err);
 	}
 };
 
@@ -63,9 +58,9 @@ exports.remove = async (req, res) => {
 
 	try {
 		await clientPhoneService.remove(clientId, id);
-		return res.json({ message: 'Telefone removido com sucesso' });
+		return response.success(res, {}, 'Telefone removido com sucesso', 204)
 	} catch (err) {
-		return handleError(res, err);
+		return response.handleError(res, err);
 	}
 };
 
@@ -76,8 +71,8 @@ exports.workflowSummary = async (req, res) => {
 
 	try {
 		const summary = await clientPhoneService.getWorkflowPhoneSummary(clientId);
-		return res.json(summary);
+		return response.success(res, summary, '', 200)
 	} catch (err) {
-		return handleError(res, err);
+		return response.handleError(res, err);
 	}
 };

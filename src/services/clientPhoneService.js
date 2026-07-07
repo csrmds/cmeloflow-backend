@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const ServiceError = require('../utils/ServiceError');
 
 const VALID_ROLES = ['ai', 'human'];
 const MAX_ACTIVE_PHONES = 2; // RN002 - máximo de telefones ativos por cliente
@@ -242,17 +243,6 @@ async function getWorkflowPhoneSummary(clientId) {
 	return { mode: 'dual', ai_phone: aiPhone, human_phone: humanPhone };
 }
 
-/**
- * Erro de domínio do service, já carregando o status HTTP sugerido.
- * O controller decide se usa esse status ou não.
- */
-class ServiceError extends Error {
-	constructor(message, statusCode = 500) {
-		super(message);
-		this.name = 'ServiceError';
-		this.statusCode = statusCode;
-	}
-}
 
 module.exports = {
 	list,

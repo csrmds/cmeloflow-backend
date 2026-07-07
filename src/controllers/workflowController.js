@@ -6,12 +6,6 @@ const n8nSubDomain = process.env.N8N_SUBDOMAIN
 const domainPublicName = process.env.DOMAIN_PUBLIC_NAME
 const n8nApiKey = process.env.N8N_APIKEY
 
-function handleServiceError(res, err, fallbackMessage = 'Erro inesperado') {
-	if (err instanceof clientWorkflowService.ServiceError) {
-		return response.error(res, err.message, err.statusCode, err)
-	}
-	return response.error(res, fallbackMessage, 500, err)
-}
 
 exports.listByClientId = async (req, res) => {
 	console.log("workflow controller listByClientId: ")
@@ -30,7 +24,7 @@ exports.listByClientId = async (req, res) => {
 		}
 		return response.success(res, rows, "Consulta realizada com sucesso.", 200)
 	} catch (e) {
-		return handleServiceError(res, e, "Erro ao consultar workflows.")
+		return response.handleError(res, e, "Erro ao consultar workflows.")
 	}
 }
 
@@ -46,7 +40,7 @@ exports.addWorkflowClient = async (req, res) => {
 		const result = await clientWorkflowService.addWorkflowClient(req.body)
 		return response.success(res, result, "Workflow adicionado ao cliente com sucesso", 200)
 	} catch (e) {
-		return handleServiceError(res, e, "Erro ao adicionar workflow para o cliente.")
+		return response.handleError(res, e, "Erro ao adicionar workflow para o cliente.")
 	}
 }
 
@@ -63,7 +57,7 @@ exports.deleteWorkflowClient = async (req, res) => {
 		const result = await clientWorkflowService.deleteWorkflowClient(workflowId)
 		return response.success(res, result, "Workflow deletado com sucesso", 200)
 	} catch (e) {
-		return handleServiceError(res, e, "Erro ao deletar workflow do cliente.")
+		return response.handleError(res, e, "Erro ao deletar workflow do cliente.")
 	}
 }
 
@@ -81,7 +75,7 @@ exports.verifyWorkflowClient = async (req, res) => {
 		const result = await clientWorkflowService.verifyWorkflowClient(req.body)
 		return response.success(res, result, "Consulta realizada com sucesso", 200)
 	} catch (e) {
-		return handleServiceError(res, e, "Erro ao verificar workflow do cliente.")
+		return response.handleError(res, e, "Erro ao verificar workflow do cliente.")
 	}
 }
 
