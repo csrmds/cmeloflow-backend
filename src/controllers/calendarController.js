@@ -77,6 +77,16 @@ exports.listEvents = async (req, res) => {
 	}
 };
 
+// POST /calendar/events   body: { summary, description?, start, end, attendeeEmail?, calendarId? }
+exports.createEvent = async (req, res) => {
+	try {
+		const event = await calendarService.createEvent(req.user.client_id, req.body);
+		return response.success(res, event, 'Evento criado com sucesso', 201);
+	} catch (err) {
+		return response.handleError(res, err, 'Erro ao criar evento');
+	}
+};
+
 // PUT /calendar/events/:id
 exports.updateEvent = async (req, res) => {
 	try {

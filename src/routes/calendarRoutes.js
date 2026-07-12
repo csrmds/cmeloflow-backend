@@ -15,6 +15,7 @@ router.post('/default', auth, controller.setDefaultCalendar);
 
 // Eventos — chamadas pelo frontend (JWT), usado pelo react-big-calendar
 router.get('/events', auth, controller.listEvents);
+router.post('/events', auth, controller.createEvent);
 router.put('/events/:id', auth, controller.updateEvent);
 router.delete('/events/:id', auth, controller.deleteEvent);
 
