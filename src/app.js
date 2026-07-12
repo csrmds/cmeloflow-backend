@@ -8,6 +8,7 @@ const leadRoutes = require('./routes/leadRoutes');
 const clientRoutes = require('./routes/clientRoutes');
 const workflowRoutes = require('./routes/workflowRoutes');
 const sessionRoutes = require('./routes/sessionRoutes')
+const calendarRoutes = require('./routes/calendarRoutes')
 
 //CONFIG CORS
 app.use((req, res, next) => {
@@ -23,9 +24,7 @@ app.use(session({ secret: process.env.SESSION_SECRET, resave: false, saveUniniti
 app.use(passport.initialize())
 
 
-
 app.use(express.json());
-
 
 
 app.use('/auth', authRoutes);
@@ -34,6 +33,7 @@ app.use('/leads', leadRoutes);
 app.use('/clients', clientRoutes);
 app.use('/workflow', workflowRoutes);
 app.use('/session', sessionRoutes)
+app.use('/calendar', calendarRoutes)
 
 
 app.get('/teste', (req, res) => {
