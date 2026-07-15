@@ -10,6 +10,7 @@ const { FRONTEND_URL } = require('../config/passport');
 exports.getConnectUrl = async (req, res) => {
 	try {
 		const url = calendarService.getAuthUrl(req.user.client_id);
+		console.log("getConnectUrl: ", url)
 		return response.success(res, { url }, '', 200);
 	} catch (err) {
 		return response.handleError(res, err, 'Erro ao gerar URL de conexão com Google');
@@ -21,6 +22,7 @@ exports.googleCallback = async (req, res) => {
 	const { code, state, error } = req.query;
 
 	if (error || !code || !state) {
+		console.log("googleCallback error: ", error)
 		return res.redirect(`${FRONTEND_URL}/perfil?calendar_error=1`);
 	}
 
@@ -44,6 +46,16 @@ exports.listCalendars = async (req, res) => {
 		return response.success(res, calendars, '', 200);
 	} catch (err) {
 		return response.handleError(res, err, 'Erro ao listar agendas');
+	}
+};
+
+// GET /calendar/default
+exports.getDefaultCalendar = async (req, res) => {
+	try {
+		const calendarId = await calendarService.getDefaultCalendarId(req.user.client_id);
+		return response.success(res, { calendarId }, '', 200);
+	} catch (err) {
+		return response.handleError(res, err, 'Erro ao consultar agenda padrão');
 	}
 };
 
@@ -99,8 +111,10 @@ exports.updateEvent = async (req, res) => {
 
 // DELETE /calendar/events/:id   query: calendarId?
 exports.deleteEvent = async (req, res) => {
+	console.log("\nCalendar Controller - deleteEvent")
 	try {
-		await calendarService.deleteEvent(req.user.client_id, req.params.id, req.query.calendarId);
+		const result= await calendarService.deleteEvent(req.user.client_id, req.params.id, req.query.calendarId);
+		console.log("await calendarService.deleteEvent: ", result)
 		return response.success(res, {}, 'Evento removido com sucesso', 200);
 	} catch (err) {
 		return response.handleError(res, err, 'Erro ao remover evento');

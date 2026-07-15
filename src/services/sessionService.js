@@ -145,7 +145,9 @@ async function init(data) {
 			[client.c_id]
 		);
 
-		// 6. Retorna tudo
+		// 6. Verificar se o cliente tem credenciais do google agenda
+
+		// 7. Retorna tudo
 		return {
 			client: {
 				id: client.c_id,
