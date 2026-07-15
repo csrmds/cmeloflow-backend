@@ -141,11 +141,19 @@ async function init(data) {
 
 		// 5. Carrega produtos ativos do cliente
 		const [products] = await conn.query(
-			'SELECT id, name, description, price, type, keywords FROM products WHERE client_id = ? AND active = 1',
+			'SELECT id, name, description, price, type, keywords, requires_scheduling FROM products WHERE client_id = ? AND active = 1',
 			[client.c_id]
 		);
 
 		// 6. Verificar se o cliente tem credenciais do google agenda
+		const [calRows] = await conn.query(
+			`SELECT default_calendar_id FROM client_calendar_credentials WHERE client_id = ? AND provider = 'google'`,
+			[client.c_id]
+		);
+		const calendar = {
+			connected: calRows.length > 0,
+			default_calendar_id: calRows[0]?.default_calendar_id ?? null,
+		};
 
 		// 7. Retorna tudo
 		return {
@@ -161,6 +169,7 @@ async function init(data) {
 			workflow: { active: true },
 			lead: { ...lead, is_new },
 			products,
+			calendar,
 		};
 	} finally {
 		conn.release();
