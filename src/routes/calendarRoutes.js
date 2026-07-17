@@ -23,5 +23,6 @@ router.delete('/events/:id', auth, controller.deleteEvent);
 // Chamadas SEM auth de usuário — vai ser chamado pelo n8n com x-api-key no header
 router.post('/availability', internalAuth, controller.checkAvailability);
 router.post('/events/create', internalAuth, controller.createEventInternal);
+router.post('/next-available-slots', internalAuth, controller.getNextAvailableSlots);
 
 module.exports = router;

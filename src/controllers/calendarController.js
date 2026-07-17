@@ -141,7 +141,8 @@ exports.checkAvailability = async (req, res) => {
 	}
 };
 
-// POST /calendar/events/create   body: { client_id, summary, description?, start, end, attendeeEmail?, calendarId? }
+// POST /calendar/events/create   
+// body: { client_id, summary, description?, start, end, attendeeEmail?, calendarId? }
 exports.createEventInternal = async (req, res) => {
 	const { client_id, ...eventData } = req.body;
 
@@ -154,5 +155,29 @@ exports.createEventInternal = async (req, res) => {
 		return response.success(res, event, 'Evento criado com sucesso', 201);
 	} catch (err) {
 		return response.handleError(res, err, 'Erro ao criar evento');
+	}
+};
+
+// POST /calendar/next-available-slots
+// body: { client_id, timeMin, timeMax, calendarId?, slotDurationMinutes?, businessHourStart?, businessHourEnd?, maxResults? }
+exports.getNextAvailableSlots = async (req, res) => {
+	const {
+		client_id, timeMin, timeMax, calendarId,
+		slotDurationMinutes, businessHourStart, businessHourEnd,
+		maxResults, maxDaysLookahead,
+	} = req.body;
+
+	if (!client_id || !timeMin || !timeMax) {
+		return response.error(res, 'client_id, timeMin e timeMax são obrigatórios', 400);
+	}
+
+	try {
+		const result = await calendarService.getNextAvailableSlots(
+			client_id, timeMin, timeMax, calendarId,
+			{ slotDurationMinutes, businessHourStart, businessHourEnd, maxResults, maxDaysLookahead }
+		);
+		return response.success(res, result, '', 200);
+	} catch (err) {
+		return response.handleError(res, err, 'Erro ao consultar próximos horários disponíveis');
 	}
 };

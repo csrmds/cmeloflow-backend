@@ -361,6 +361,115 @@ async function deleteEvent(clientId, eventId, calendarId = null) {
 	return true;
 }
 
+const MAX_DAYS_LOOKAHEAD_DEFAULT = 7;
+
+async function getClientSchedulingConfig(clientId) {
+	const [rows] = await pool.query(
+		'SELECT business_hour_start, business_hour_end, default_slot_duration_minutes FROM client_scheduling_config WHERE client_id = ?',
+		[clientId]
+	);
+	return rows[0] ?? null; // se null, quem chamou usa o HARDCODED_FALLBACK
+}
+
+
+/**
+ * Calcula os próximos horários livres a partir de uma lista de intervalos ocupados.
+ * Pura função de cálculo — não faz chamada externa.
+ * @param {{start: string, end: string}[]} busy - intervalos ocupados (ISO 8601)
+ * @param {Date} fromDate - a partir de quando procurar
+ * @param {{ slotDurationMinutes: number, businessHourStart: number, businessHourEnd: number, maxResults: number }} opts
+ */
+function calculateFreeSlots(busy, fromDate, opts) {
+	const { slotDurationMinutes, businessHourStart, businessHourEnd, maxResults } = opts;
+	const slotMs = slotDurationMinutes * 60 * 1000;
+
+	// Normaliza e ordena os intervalos ocupados
+	const busyIntervals = busy
+		.map((b) => ({ start: new Date(b.start), end: new Date(b.end) }))
+		.sort((a, b) => a.start - b.start);
+
+	const freeSlots = [];
+	let cursorDay = new Date(fromDate);
+	cursorDay.setSeconds(0, 0);
+
+	for (let dayOffset = 0; dayOffset < MAX_DAYS_LOOKAHEAD && freeSlots.length < maxResults; dayOffset++) {
+		const day = new Date(cursorDay);
+		day.setDate(day.getDate() + dayOffset);
+
+		let slotStart = new Date(day);
+		slotStart.setHours(businessHourStart, 0, 0, 0);
+		const dayEnd = new Date(day);
+		dayEnd.setHours(businessHourEnd, 0, 0, 0);
+
+		// No primeiro dia, não sugerir horário que já passou
+		if (dayOffset === 0 && slotStart < fromDate) {
+			slotStart = new Date(fromDate);
+			// arredonda pra próxima hora cheia
+			slotStart.setMinutes(0, 0, 0);
+			slotStart.setHours(slotStart.getHours() + 1);
+		}
+
+		while (slotStart.getTime() + slotMs <= dayEnd.getTime() && freeSlots.length < maxResults) {
+			const slotEnd = new Date(slotStart.getTime() + slotMs);
+
+			const overlaps = busyIntervals.some(
+				(b) => slotStart < b.end && slotEnd > b.start
+			);
+
+			if (!overlaps) {
+				freeSlots.push({
+					start: slotStart.toISOString(),
+					end: slotEnd.toISOString(),
+				});
+				slotStart = new Date(slotStart.getTime() + slotMs);
+			} else {
+				// pula pro fim do conflito mais próximo
+				const conflict = busyIntervals.find((b) => slotStart < b.end && slotEnd > b.start);
+				slotStart = new Date(conflict.end);
+			}
+		}
+	}
+
+	return freeSlots;
+}
+
+
+async function getNextAvailableSlots(clientId, timeMin, timeMax, calendarId = null, opts = {}) {
+	const dbConfig = await getClientSchedulingConfig(clientId);
+
+	const businessHourStart = opts.businessHourStart ?? dbConfig?.business_hour_start
+
+	const businessHourEnd = opts.businessHourEnd ?? dbConfig?.business_hour_end
+
+	const slotDurationMinutes = opts.slotDurationMinutes ?? dbConfig?.default_slot_duration_minutes
+
+	const maxDaysLookahead = opts.maxDaysLookahead ?? MAX_DAYS_LOOKAHEAD_DEFAULT;
+	const maxResults = opts.maxResults ?? 5;
+
+	const credRow = await getCredentialsRow(clientId);
+	const auth = await getAuthenticatedClient(clientId, credRow);
+	const calendar = google.calendar({ version: 'v3', auth });
+	const resolvedId = resolveCalendarId(credRow, calendarId);
+
+	const { data } = await calendar.freebusy.query({
+		requestBody: { timeMin, timeMax, items: [{ id: resolvedId }] },
+	});
+	const busy = data.calendars?.[resolvedId]?.busy ?? [];
+
+	const slots = calculateFreeSlots(busy, new Date(timeMin), {
+		slotDurationMinutes,
+		businessHourStart,
+		businessHourEnd,
+		maxResults,
+		maxDaysLookahead,
+	});
+
+	return { calendarId: resolvedId, slotDurationMinutes, businessHourStart, businessHourEnd, slots };
+}
+
+
+
+
 module.exports = {
 	getAuthUrl,
 	connectCalendar,
@@ -372,5 +481,8 @@ module.exports = {
 	createEvent,
 	updateEvent,
 	deleteEvent,
+	getClientSchedulingConfig,
+	calculateFreeSlots,
+	getNextAvailableSlots,
 	ServiceError,
 };

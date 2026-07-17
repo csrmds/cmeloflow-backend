@@ -7,12 +7,12 @@ const ServiceError = require('../utils/ServiceError');
  * @param {{ name, description, price }} data
  */
 async function create(user, data) {
-	const { name, description, price } = data;
+	const { name, description, price, type, duration_minutes, keywords } = data;
 	const { client_id } = user;
 
 	const [result] = await pool.query(
-		`INSERT INTO products (name, description, price, client_id) VALUES (?, ?, ?, ?)`,
-		[name, description, price, client_id]
+		`INSERT INTO products (name, description, price, type, duration_minutes, keywords, client_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		[name, description, price, type, duration_minutes, keywords, client_id]
 	);
 
 	return { id: result.insertId };
@@ -106,19 +106,19 @@ async function getById(user, id) {
  */
 async function update(user, id, data) {
 	const { client_id, user_role } = user;
-	const { name, description, price, keywords, type, active } = data;
+	const { name, description, price, keywords, type, active, duration_minutes } = data;
 
 	let result;
 
 	if (user_role === 'client') {
 		[result] = await pool.query(
-			`UPDATE products SET name = ?, description = ?, price = ?, keywords = ?, type = ?, active = ? WHERE id = ? AND client_id = ?`,
-			[name, description, price, keywords, type, active, id, client_id]
+			`UPDATE products SET name = ?, description = ?, price = ?, keywords = ?, type = ?, active = ?, duration_minutes = ? WHERE id = ? AND client_id = ?`,
+			[name, description, price, keywords, type, active, duration_minutes, id, client_id]
 		);
 	} else if (user_role === 'service' || user_role === 'admin') {
 		[result] = await pool.query(
-			`UPDATE products SET name = ?, description = ?, price = ?, keywords = ?, type = ?, active = ? WHERE id = ?`,
-			[name, description, price, keywords, type, active, id]
+			`UPDATE products SET name = ?, description = ?, price = ?, keywords = ?, type = ?, active = ?, duration_minutes = ? WHERE id = ?`,
+			[name, description, price, keywords, type, active, duration_minutes, id]
 		);
 	} else {
 		throw new ServiceError('Acesso negado', 403);
