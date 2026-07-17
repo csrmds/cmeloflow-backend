@@ -150,10 +150,15 @@ async function init(data) {
 			`SELECT default_calendar_id FROM client_calendar_credentials WHERE client_id = ? AND provider = 'google'`,
 			[client.c_id]
 		);
+		// 6.1 Consulta configurações de horario do cliente
+		const [schedulingResult] = await conn.query( `select * from client_scheduling_config where client_id = ?`, [client.c_id])
+
 		const calendar = {
 			connected: calRows.length > 0,
 			default_calendar_id: calRows[0]?.default_calendar_id ?? null,
+			scheduling: schedulingResult[0] ?? null
 		};
+
 
 		// 7. Retorna tudo
 		return {
@@ -168,7 +173,7 @@ async function init(data) {
 			},
 			workflow: { active: true },
 			lead: { ...lead, is_new },
-			products,
+			//products,
 			calendar,
 		};
 	} finally {

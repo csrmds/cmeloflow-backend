@@ -33,9 +33,7 @@ async function create(user, data) {
  */
 async function list(user) {
 	//console.log("product Service params: ", user)
-	const { client_id, user_role } = user;
-
-	//console.log("Client_id: ", client_id, "\nuser_role: ", user_role)
+	const { client_id, user_role, client_whatsapp } = user;
 
 
 	if (user_role === 'client') {
@@ -54,11 +52,11 @@ async function list(user) {
 	if (user_role === 'service') {
 		const [rows] = await pool.query(
 			`SELECT products.*, clients.name as client_name, clients.whatsapp_number as client_whatsapp_number
-       FROM products
-       INNER JOIN clients
-       ON products.client_id = clients.id
-       AND clients.whatsapp_number = ?`,
-			[clientWhatsapp]
+			FROM products
+			INNER JOIN clients
+			ON products.client_id = clients.id
+			AND clients.id = ?`,
+			[client_id]
 		);
 		return rows;
 	}

@@ -12,8 +12,9 @@ exports.create = async (req, res) => {
 };
 
 exports.list = async (req, res) => {
+	console.log("\n\nProduct Controller")
 	try {
-		//const clientWhatsapp = req.body?.client_whatsapp || null;
+		console.log("req user: ", req.user)
 		const rows = await productService.list(req.user);
 		return response.success(res, rows, 'Consulta realizada com sucesso', 200);
 	} catch (err) {
@@ -47,5 +48,17 @@ exports.remove = async (req, res) => {
 		return response.success(res, {}, 'Removido', 200);
 	} catch (err) {
 		return response.handleError(res, err, 'Erro ao remover produto');
+	}
+};
+
+
+exports.listByClientId = async (req, res) => {
+	console.log("\n\nProduct Controller - listByClientId")
+	try {
+		//console.log("req: ", req.body)
+		const rows = await productService.list(req.body.user);
+		return response.success(res, rows, 'Consulta realizada com sucesso', 200);
+	} catch (err) {
+		return response.handleError(res, err, 'Erro ao listar produtos');
 	}
 };
