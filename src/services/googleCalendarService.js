@@ -392,7 +392,7 @@ function calculateFreeSlots(busy, fromDate, opts) {
 	let cursorDay = new Date(fromDate);
 	cursorDay.setSeconds(0, 0);
 
-	for (let dayOffset = 0; dayOffset < MAX_DAYS_LOOKAHEAD && freeSlots.length < maxResults; dayOffset++) {
+	for (let dayOffset = 0; dayOffset < MAX_DAYS_LOOKAHEAD_DEFAULT && freeSlots.length < maxResults; dayOffset++) {
 		const day = new Date(cursorDay);
 		day.setDate(day.getDate() + dayOffset);
 
