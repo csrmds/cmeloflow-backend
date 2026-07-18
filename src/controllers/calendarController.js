@@ -1,5 +1,6 @@
 const calendarService = require('../services/googleCalendarService');
 const response = require('../utils/response');
+const logger = require('../config/logger');
 const { FRONTEND_URL } = require('../config/passport');
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -76,6 +77,7 @@ exports.setDefaultCalendar = async (req, res) => {
 // GET /calendar/events   query: timeMin, timeMax, calendarId?
 exports.listEvents = async (req, res) => {
 	const { timeMin, timeMax, calendarId } = req.query;
+	logger.info({ params: req.body }, 'params');
 
 	if (!timeMin || !timeMax) {
 		return response.error(res, 'timeMin e timeMax são obrigatórios', 400);
@@ -127,7 +129,9 @@ exports.deleteEvent = async (req, res) => {
 
 // POST /calendar/availability   body: { client_id, timeMin, timeMax, calendarId? }
 exports.checkAvailability = async (req, res) => {
+	logger.info('Calendar Controller - checkAvailability');
 	const { client_id, timeMin, timeMax, calendarId } = req.body;
+	logger.info({ params: req.body }, 'params');
 
 	if (!client_id || !timeMin || !timeMax) {
 		return response.error(res, 'client_id, timeMin e timeMax são obrigatórios', 400);
@@ -144,7 +148,9 @@ exports.checkAvailability = async (req, res) => {
 // POST /calendar/events/create   
 // body: { client_id, summary, description?, start, end, attendeeEmail?, calendarId? }
 exports.createEventInternal = async (req, res) => {
+	logger.info('Calendar Controller - createEventInternal');
 	const { client_id, ...eventData } = req.body;
+	logger.info({ params: req.body }, 'params');
 
 	if (!client_id) {
 		return response.error(res, 'client_id é obrigatório', 400);
@@ -161,11 +167,13 @@ exports.createEventInternal = async (req, res) => {
 // POST /calendar/next-available-slots
 // body: { client_id, timeMin, timeMax, calendarId?, slotDurationMinutes?, businessHourStart?, businessHourEnd?, maxResults? }
 exports.getNextAvailableSlots = async (req, res) => {
+	logger.info('Calendar Controller - getNextAvailableSlots');
 	const {
 		client_id, timeMin, timeMax, calendarId,
 		slotDurationMinutes, businessHourStart, businessHourEnd,
 		maxResults, maxDaysLookahead,
 	} = req.body;
+	logger.info({ params: req.body }, 'params');
 
 	if (!client_id || !timeMin || !timeMax) {
 		return response.error(res, 'client_id, timeMin e timeMax são obrigatórios', 400);
