@@ -1,6 +1,8 @@
 const ServiceError = require('./ServiceError');
+const logger = require('../config/logger');
 
 const handleError = (res, err, fallbackMessage = 'Erro inesperado') => {
+	logger.error({ err }, fallbackMessage);
 	if (err instanceof ServiceError) {
 		return error(res, err.message, err.statusCode, err);
 	}

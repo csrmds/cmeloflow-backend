@@ -1,5 +1,7 @@
 const express = require('express');
 const session = require('express-session');
+const pinoHttp = require('pino-http');
+const logger = require('./config/logger');
 const { passport } = require('./config/passport')
 const app = express();
 const authRoutes = require('./routes/authRoutes');
@@ -9,6 +11,9 @@ const clientRoutes = require('./routes/clientRoutes');
 const workflowRoutes = require('./routes/workflowRoutes');
 const sessionRoutes = require('./routes/sessionRoutes')
 const calendarRoutes = require('./routes/calendarRoutes')
+
+//CONFIG LOGGER
+app.use(pinoHttp({ logger }));
 
 //CONFIG CORS
 app.use((req, res, next) => {
