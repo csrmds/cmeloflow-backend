@@ -76,6 +76,7 @@ exports.setDefaultCalendar = async (req, res) => {
 
 // GET /calendar/events   query: timeMin, timeMax, calendarId?
 exports.listEvents = async (req, res) => {
+	logger.info('Calendar Controller - listEvents');
 	const { timeMin, timeMax, calendarId } = req.query;
 	logger.info({ params: req.body }, 'params');
 
@@ -93,6 +94,8 @@ exports.listEvents = async (req, res) => {
 
 // POST /calendar/events   body: { summary, description?, start, end, attendeeEmail?, calendarId? }
 exports.createEvent = async (req, res) => {
+	logger.info('Calendar Controller - createEvent');
+	logger.info({ params: req.body }, 'params');
 	try {
 		const event = await calendarService.createEvent(req.user.client_id, req.body);
 		return response.success(res, event, 'Evento criado com sucesso', 201);
@@ -103,6 +106,8 @@ exports.createEvent = async (req, res) => {
 
 // PUT /calendar/events/:id
 exports.updateEvent = async (req, res) => {
+	logger.info('Calendar Controller - updateEvent');
+	logger.info({ params: req.body }, 'params');
 	try {
 		const event = await calendarService.updateEvent(req.user.client_id, req.params.id, req.body);
 		return response.success(res, event, 'Evento atualizado com sucesso', 200);
@@ -113,7 +118,8 @@ exports.updateEvent = async (req, res) => {
 
 // DELETE /calendar/events/:id   query: calendarId?
 exports.deleteEvent = async (req, res) => {
-	console.log("\nCalendar Controller - deleteEvent")
+	logger.info('Calendar Controller - deleteEvent');
+	logger.info({ params: req.body }, 'params');
 	try {
 		const result= await calendarService.deleteEvent(req.user.client_id, req.params.id, req.query.calendarId);
 		console.log("await calendarService.deleteEvent: ", result)
