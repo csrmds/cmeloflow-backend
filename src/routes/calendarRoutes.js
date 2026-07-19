@@ -16,13 +16,17 @@ router.post('/default', auth, controller.setDefaultCalendar);
 
 // Eventos — chamadas pelo frontend (JWT), usado pelo react-big-calendar
 router.get('/events', auth, controller.listEvents);
+router.post('/events/lead', auth, controller.listEventsByLead);
 router.post('/events', auth, controller.createEvent);
 router.put('/events/:id', auth, controller.updateEvent);
 router.delete('/events/:id', auth, controller.deleteEvent);
 
 // Chamadas SEM auth de usuário — vai ser chamado pelo n8n com x-api-key no header
-router.post('/availability', internalAuth, controller.checkAvailability);
-router.post('/events/create', internalAuth, controller.createEventInternal);
-router.post('/next-available-slots', internalAuth, controller.getNextAvailableSlots);
+router.post('/agent/availability', internalAuth, controller.checkAvailability);
+router.post('/agent/create', internalAuth, controller.createEventInternal);
+router.put('/agent/update/:id', internalAuth, controller.updateEvent);
+router.delete('/agent/delete/:id', internalAuth, controller.deleteEvent);
+router.post('/agent/next-available-slots', internalAuth, controller.getNextAvailableSlots);
+router.post('/agent/lead-events', internalAuth, controller.listEventsByLead);
 
 module.exports = router;

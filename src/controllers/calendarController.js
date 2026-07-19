@@ -92,6 +92,25 @@ exports.listEvents = async (req, res) => {
 	}
 };
 
+// POST /calendar/lead-events   body: { client_id, lead_whatsapp, calendarId?, timeMin?, timeMax?, maxResults? }
+exports.listEventsByLead = async (req, res) => {
+	const client_id= req.user.client_id ?? req.body.client_id
+	const { lead_whatsapp, calendarId, timeMin, timeMax, maxResults } = req.body;
+
+	if (!client_id || !lead_whatsapp) {
+		return response.error(res, 'client_id e lead_whatsapp são obrigatórios', 400);
+	}
+
+	try {
+		const events = await calendarService.listEventsByLead(client_id, lead_whatsapp, {
+			calendarId, timeMin, timeMax, maxResults,
+		});
+		return response.success(res, events, '', 200);
+	} catch (err) {
+		return response.handleError(res, err, 'Erro ao consultar agendamentos do lead');
+	}
+};
+
 // POST /calendar/events   body: { summary, description?, start, end, attendeeEmail?, calendarId? }
 exports.createEvent = async (req, res) => {
 	logger.info('Calendar Controller - createEvent');
@@ -108,8 +127,15 @@ exports.createEvent = async (req, res) => {
 exports.updateEvent = async (req, res) => {
 	logger.info('Calendar Controller - updateEvent');
 	logger.info({ params: req.body }, 'params');
+
+	const client_id= req.user.client_id ?? req.body.client_id
+
+	if (!client_id || !req.params.id ) {
+		return response.erro(res, 'client_id, id são obrigatórios', 400)
+	}
+
 	try {
-		const event = await calendarService.updateEvent(req.user.client_id, req.params.id, req.body);
+		const event = await calendarService.updateEvent(client_id, req.params.id, req.body);
 		return response.success(res, event, 'Evento atualizado com sucesso', 200);
 	} catch (err) {
 		return response.handleError(res, err, 'Erro ao atualizar evento');
@@ -120,8 +146,15 @@ exports.updateEvent = async (req, res) => {
 exports.deleteEvent = async (req, res) => {
 	logger.info('Calendar Controller - deleteEvent');
 	logger.info({ params: req.body }, 'params');
+
+	const client_id= req.user.client_id ?? req.body.client_id
+
+	if (!client_id || !req.params.id || !req.query.calendarId) {
+		return response.erro(res, 'client_id, id e calendarId são obrigatórios', 400)
+	}
+
 	try {
-		const result= await calendarService.deleteEvent(req.user.client_id, req.params.id, req.query.calendarId);
+		const result= await calendarService.deleteEvent(client_id, req.params.id, req.query.calendarId);
 		console.log("await calendarService.deleteEvent: ", result)
 		return response.success(res, {}, 'Evento removido com sucesso', 200);
 	} catch (err) {
@@ -133,7 +166,7 @@ exports.deleteEvent = async (req, res) => {
 // Chamadas do N8N (sem JWT — internalAuth via x-api-key, client_id no body)
 // ──────────────────────────────────────────────────────────────────────────
 
-// POST /calendar/availability   body: { client_id, timeMin, timeMax, calendarId? }
+// POST /calendar/agent/availability   body: { client_id, timeMin, timeMax, calendarId? }
 exports.checkAvailability = async (req, res) => {
 	logger.info('Calendar Controller - checkAvailability');
 	const { client_id, timeMin, timeMax, calendarId } = req.body;
@@ -151,7 +184,7 @@ exports.checkAvailability = async (req, res) => {
 	}
 };
 
-// POST /calendar/events/create   
+// POST /calendar/agent/create   
 // body: { client_id, summary, description?, start, end, attendeeEmail?, calendarId? }
 exports.createEventInternal = async (req, res) => {
 	logger.info('Calendar Controller - createEventInternal');
@@ -170,7 +203,7 @@ exports.createEventInternal = async (req, res) => {
 	}
 };
 
-// POST /calendar/next-available-slots
+// POST /calendar/agent/next-available-slots
 // body: { client_id, timeMin, timeMax, calendarId?, slotDurationMinutes?, businessHourStart?, businessHourEnd?, maxResults? }
 exports.getNextAvailableSlots = async (req, res) => {
 	logger.info('Calendar Controller - getNextAvailableSlots');

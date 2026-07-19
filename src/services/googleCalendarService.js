@@ -81,15 +81,6 @@ async function connectCalendar(code, clientId) {
 		]
 	);
 
-	// console.log("dados insert: ", [
-	// 	clientId,
-	// 	profile.email ?? null,
-	// 	encrypt(tokens.access_token),
-	// 	encrypt(tokens.refresh_token),
-	// 	toMysqlDatetime(tokens.expiry_date),
-	// 	tokens.scope ?? null,
-	// ])
-
 
 	return { connected: true, email: profile.email ?? null };
 }
@@ -276,12 +267,42 @@ async function listEvents(clientId, timeMin, timeMax, calendarId = null) {
 }
 
 /**
+ * Listar eventos de Cliente por (Lead)attendeeEmail
+ **
+ */
+async function listEventsByLead(clientId, leadWhatsapp, opts = {}) {
+	console.log("\n\nCalendarService listEventsByLead:")
+	if (!leadWhatsapp) {
+		throw new ServiceError('leadWhatsapp é obrigatório', 400);
+	}
+
+	const credRow = await getCredentialsRow(clientId);
+	const auth = await getAuthenticatedClient(clientId, credRow);
+	const calendar = google.calendar({ version: 'v3', auth });
+	const resolvedId = resolveCalendarId(credRow, opts.calendarId);
+
+	const { data } = await calendar.events.list({
+		calendarId: resolvedId,
+		timeMin: opts.timeMin || new Date().toISOString(),
+		timeMax: opts.timeMax || undefined,
+		singleEvents: true,
+		orderBy: 'startTime',
+		maxResults: opts.maxResults || 20,
+		privateExtendedProperty: [`lead_whatsapp=${leadWhatsapp}`],
+	});
+
+	return data.items ?? [];
+
+}
+
+
+/**
  * Cria um evento na agenda do Cliente.
  * @param {number|string} clientId
  * @param {{ summary: string, description?: string, start: string, end: string, attendeeEmail?: string, calendarId?: string }} eventData
  */
 async function createEvent(clientId, eventData) {
-	const { summary, description, start, end, attendeeEmail, calendarId } = eventData;
+	const { summary, description, start, end, attendeeEmail, calendarId, leadWhatsapp } = eventData;
 
 	if (!summary || !start || !end) {
 		throw new ServiceError('summary, start e end são obrigatórios', 400);
@@ -300,6 +321,7 @@ async function createEvent(clientId, eventData) {
 			start: { dateTime: start },
 			end: { dateTime: end },
 			attendees: attendeeEmail ? [{ email: attendeeEmail }] : undefined,
+			extendedProperties: leadWhatsapp ? { private: { lead_whatsapp: String(leadWhatsapp) } } : undefined,
 		},
 	});
 
@@ -478,6 +500,7 @@ module.exports = {
 	setDefaultCalendar,
 	getAvailability,
 	listEvents,
+	listEventsByLead,
 	createEvent,
 	updateEvent,
 	deleteEvent,
