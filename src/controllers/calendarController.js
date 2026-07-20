@@ -131,7 +131,7 @@ exports.updateEvent = async (req, res) => {
 	const client_id= req.user?.client_id ?? req.body.client_id
 
 	if (!client_id || !req.params.id ) {
-		return response.erro(res, 'client_id, id são obrigatórios', 400)
+		return response.error(res, 'client_id, id são obrigatórios', 400)
 	}
 
 	try {
@@ -150,7 +150,7 @@ exports.deleteEvent = async (req, res) => {
 	const client_id= req.user?.client_id ?? req.body.client_id
 
 	if (!client_id || !req.params.id || !req.query.calendarId) {
-		return response.erro(res, 'client_id, id e calendarId são obrigatórios', 400)
+		return response.error(res, 'client_id, id e calendarId são obrigatórios', 400)
 	}
 
 	try {
