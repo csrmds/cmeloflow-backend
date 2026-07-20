@@ -76,9 +76,9 @@ exports.setDefaultCalendar = async (req, res) => {
 
 // GET /calendar/events   query: timeMin, timeMax, calendarId?
 exports.listEvents = async (req, res) => {
-	logger.info('Calendar Controller - listEvents');
+	logger.info('\nCalendar Controller - listEvents');
 	const { timeMin, timeMax, calendarId } = req.query;
-	logger.info({ params: req.body }, 'params');
+	logger.info({ bodyRequest: req.body }, 'bodyRequest');
 
 	if (!timeMin || !timeMax) {
 		return response.error(res, 'timeMin e timeMax são obrigatórios', 400);
@@ -94,7 +94,7 @@ exports.listEvents = async (req, res) => {
 
 // POST /calendar/lead-events   body: { client_id, lead_whatsapp, calendarId?, timeMin?, timeMax?, maxResults? }
 exports.listEventsByLead = async (req, res) => {
-	const client_id= req.user.client_id ?? req.body.client_id
+	const client_id= req.user?.client_id ?? req.body.client_id
 	const { lead_whatsapp, calendarId, timeMin, timeMax, maxResults } = req.body;
 
 	if (!client_id || !lead_whatsapp) {
@@ -113,8 +113,8 @@ exports.listEventsByLead = async (req, res) => {
 
 // POST /calendar/events   body: { summary, description?, start, end, attendeeEmail?, calendarId? }
 exports.createEvent = async (req, res) => {
-	logger.info('Calendar Controller - createEvent');
-	logger.info({ params: req.body }, 'params');
+	logger.info('\nCalendar Controller - createEvent');
+	logger.info({ bodyRequest: req.body }, 'bodyRequest');
 	try {
 		const event = await calendarService.createEvent(req.user.client_id, req.body);
 		return response.success(res, event, 'Evento criado com sucesso', 201);
@@ -125,10 +125,10 @@ exports.createEvent = async (req, res) => {
 
 // PUT /calendar/events/:id
 exports.updateEvent = async (req, res) => {
-	logger.info('Calendar Controller - updateEvent');
-	logger.info({ params: req.body }, 'params');
+	logger.info('\nCalendar Controller - updateEvent');
+	logger.info({ bodyRequest: req.body }, 'bodyRequest');
 
-	const client_id= req.user.client_id ?? req.body.client_id
+	const client_id= req.user?.client_id ?? req.body.client_id
 
 	if (!client_id || !req.params.id ) {
 		return response.erro(res, 'client_id, id são obrigatórios', 400)
@@ -144,10 +144,10 @@ exports.updateEvent = async (req, res) => {
 
 // DELETE /calendar/events/:id   query: calendarId?
 exports.deleteEvent = async (req, res) => {
-	logger.info('Calendar Controller - deleteEvent');
-	logger.info({ params: req.body }, 'params');
+	logger.info('\nCalendar Controller - deleteEvent');
+	logger.info({ bodyRequest: req.body }, 'bodyRequest');
 
-	const client_id= req.user.client_id ?? req.body.client_id
+	const client_id= req.user?.client_id ?? req.body.client_id
 
 	if (!client_id || !req.params.id || !req.query.calendarId) {
 		return response.erro(res, 'client_id, id e calendarId são obrigatórios', 400)
@@ -168,9 +168,9 @@ exports.deleteEvent = async (req, res) => {
 
 // POST /calendar/agent/availability   body: { client_id, timeMin, timeMax, calendarId? }
 exports.checkAvailability = async (req, res) => {
-	logger.info('Calendar Controller - checkAvailability');
+	logger.info('\nCalendar Controller - checkAvailability');
 	const { client_id, timeMin, timeMax, calendarId } = req.body;
-	logger.info({ params: req.body }, 'params');
+	logger.info({ bodyRequest: req.body }, 'bodyRequest');
 
 	if (!client_id || !timeMin || !timeMax) {
 		return response.error(res, 'client_id, timeMin e timeMax são obrigatórios', 400);
@@ -187,9 +187,9 @@ exports.checkAvailability = async (req, res) => {
 // POST /calendar/agent/create   
 // body: { client_id, summary, description?, start, end, attendeeEmail?, calendarId? }
 exports.createEventInternal = async (req, res) => {
-	logger.info('Calendar Controller - createEventInternal');
+	logger.info('\nCalendar Controller - createEventInternal');
 	const { client_id, ...eventData } = req.body;
-	logger.info({ params: req.body }, 'params');
+	logger.info({ bodyRequest: req.body }, 'bodyRequest');
 
 	if (!client_id) {
 		return response.error(res, 'client_id é obrigatório', 400);
@@ -206,13 +206,13 @@ exports.createEventInternal = async (req, res) => {
 // POST /calendar/agent/next-available-slots
 // body: { client_id, timeMin, timeMax, calendarId?, slotDurationMinutes?, businessHourStart?, businessHourEnd?, maxResults? }
 exports.getNextAvailableSlots = async (req, res) => {
-	logger.info('Calendar Controller - getNextAvailableSlots');
+	logger.info('\nCalendar Controller - getNextAvailableSlots');
 	const {
 		client_id, timeMin, timeMax, calendarId,
 		slotDurationMinutes, businessHourStart, businessHourEnd,
 		maxResults, maxDaysLookahead,
 	} = req.body;
-	logger.info({ params: req.body }, 'params');
+	logger.info({ bodyRequest: req.body }, 'bodyRequest');
 
 	if (!client_id || !timeMin || !timeMax) {
 		return response.error(res, 'client_id, timeMin e timeMax são obrigatórios', 400);

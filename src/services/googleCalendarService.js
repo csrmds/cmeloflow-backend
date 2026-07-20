@@ -302,6 +302,7 @@ async function listEventsByLead(clientId, leadWhatsapp, opts = {}) {
  * @param {{ summary: string, description?: string, start: string, end: string, attendeeEmail?: string, calendarId?: string }} eventData
  */
 async function createEvent(clientId, eventData) {
+	console.log("\n\nCalendarService createEvent:")
 	const { summary, description, start, end, attendeeEmail, calendarId, leadWhatsapp } = eventData;
 
 	if (!summary || !start || !end) {
