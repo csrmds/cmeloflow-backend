@@ -22,6 +22,21 @@ function toMysqlDatetime(epochMs) {
 	return new Date(epochMs).toISOString().slice(0, 19).replace('T', ' ');
 }
 
+const BR_OFFSET_MS = -3 * 60 * 60 * 1000;
+
+function toBrazilISOString(date) {
+	const shifted = new Date(date.getTime() + BR_OFFSET_MS);
+	const pad = (n) => String(n).padStart(2, '0');
+	return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}T${pad(shifted.getUTCHours())}:${pad(shifted.getUTCMinutes())}:${pad(shifted.getUTCSeconds())}-03:00`;
+}
+
+function brazilHourToUTC(referenceDate, hour) {
+	// referenceDate: instante absoluto; hour: hora desejada no relógio do Brasil
+	const shifted = new Date(referenceDate.getTime() + BR_OFFSET_MS);
+	shifted.setUTCHours(hour, 0, 0, 0); // usa setUTCHours -> não depende do TZ do processo
+	return new Date(shifted.getTime() - BR_OFFSET_MS);
+}
+
 /**
  * Gera a URL de consentimento do Google para o Cliente conectar a agenda.
  * O clientId vai no `state` para recuperarmos no callback.
@@ -416,13 +431,11 @@ function calculateFreeSlots(busy, fromDate, opts) {
 	cursorDay.setSeconds(0, 0);
 
 	for (let dayOffset = 0; dayOffset < MAX_DAYS_LOOKAHEAD_DEFAULT && freeSlots.length < maxResults; dayOffset++) {
-		const day = new Date(cursorDay);
+		const day = new Date(cursorDay.getTime() + dayOffset * 24 * 60 * 60 * 1000);
 		day.setDate(day.getDate() + dayOffset);
 
-		let slotStart = new Date(day);
-		slotStart.setHours(businessHourStart, 0, 0, 0);
-		const dayEnd = new Date(day);
-		dayEnd.setHours(businessHourEnd, 0, 0, 0);
+		let slotStart = brazilHourToUTC(day, businessHourStart)
+		const dayEnd = brazilHourToUTC(day, businessHourEnd)
 
 		// No primeiro dia, não sugerir horário que já passou
 		if (dayOffset === 0 && slotStart < fromDate) {
@@ -441,8 +454,8 @@ function calculateFreeSlots(busy, fromDate, opts) {
 
 			if (!overlaps) {
 				freeSlots.push({
-					start: slotStart.toISOString(),
-					end: slotEnd.toISOString(),
+					start: toBrazilISOString(slotStart),
+					end: toBrazilISOString(slotEnd),
 				});
 				slotStart = new Date(slotStart.getTime() + slotMs);
 			} else {
