@@ -157,7 +157,7 @@ exports.deleteEvent = async (req, res) => {
 	}
 
 	try {
-		const result= await calendarService.deleteEvent(client_id, req.query.eventId, req.body.calendarId,);
+		const result= await calendarService.deleteEvent(client_id, req.params.eventId, req.body.calendarId,);
 		console.log("await calendarService.deleteEvent: ", result)
 		return response.success(res, {}, 'Evento removido com sucesso', 200);
 	} catch (err) {
