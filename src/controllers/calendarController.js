@@ -123,7 +123,7 @@ exports.createEvent = async (req, res) => {
 	}
 };
 
-// PUT /calendar/events/:id
+// PUT /calendar/events/:eventId
 exports.updateEvent = async (req, res) => {
 	logger.info('\nCalendar Controller - updateEvent');
 	logger.info({ bodyRequest: req.body }, 'bodyRequest');
@@ -142,7 +142,7 @@ exports.updateEvent = async (req, res) => {
 	}
 };
 
-// DELETE /calendar/events/:id   body: {calendarId, client_id}
+// DELETE /calendar/events/:eventId   body: {calendarId, client_id}
 exports.deleteEvent = async (req, res) => {
 	logger.info('\nCalendar Controller - deleteEvent');
 	logger.info({ bodyRequest: req.body }, 'bodyRequest');
