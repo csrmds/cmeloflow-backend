@@ -135,7 +135,7 @@ exports.updateEvent = async (req, res) => {
 	}
 
 	try {
-		const event = await calendarService.updateEvent(client_id, req.body.calendarId, req.body);
+		const event = await calendarService.updateEvent(client_id, req.params.eventId, req.body);
 		return response.success(res, event, 'Evento atualizado com sucesso', 200);
 	} catch (err) {
 		return response.handleError(res, err, 'Erro ao atualizar evento');
@@ -145,16 +145,19 @@ exports.updateEvent = async (req, res) => {
 // DELETE /calendar/events/:eventId   body: {calendarId, client_id}
 exports.deleteEvent = async (req, res) => {
 	logger.info('\nCalendar Controller - deleteEvent');
+	logger.info({ url: req.originalUrl }, 'url');
 	logger.info({ bodyRequest: req.body }, 'bodyRequest');
+	logger.info({ reqParam: req.params }, 'reqParams');
+	logger.info({ reqQuery: req.query }, 'reqQuery');
 
 	const client_id= req.user?.client_id ?? req.body.client_id
 
-	if (!client_id || !req.body.calendarId || !req.query.eventId) {
+	if (!client_id || !req.body.calendarId || !req.params.eventId) {
 		return response.error(res, 'client_id, id e calendarId são obrigatórios', 400)
 	}
 
 	try {
-		const result= await calendarService.deleteEvent(client_id, req.body.calendarId, req.query.eventId);
+		const result= await calendarService.deleteEvent(client_id, req.query.eventId, req.body.calendarId,);
 		console.log("await calendarService.deleteEvent: ", result)
 		return response.success(res, {}, 'Evento removido com sucesso', 200);
 	} catch (err) {
