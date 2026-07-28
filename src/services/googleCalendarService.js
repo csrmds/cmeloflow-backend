@@ -118,6 +118,53 @@ async function getCredentialsRow(clientId) {
 	return rows[0];
 }
 
+
+/**
+ * Retorna o status da conexão do cliente com o Google Agenda, sem lançar
+ * exceção. Distingue: nunca conectou / conectado / erro (token inválido etc).
+ * @param {number|string} clientId
+ */
+async function getConnectionStatus(clientId) {
+	const [rows] = await pool.query(
+		`SELECT google_account_email, token_expiry, scope, default_calendar_id, connected_at, updated_at
+		 FROM client_calendar_credentials WHERE client_id = ? AND provider = 'google'`,
+		[clientId]
+	);
+
+	if (!rows.length) {
+		return { connected: false, status: 'not_connected', email: null };
+	}
+
+	const cred = rows[0];
+
+	try {
+		const auth = await getAuthenticatedClient(clientId);
+		const calendar = google.calendar({ version: 'v3', auth });
+		// chamada leve só pra validar que o token realmente funciona
+		await calendar.calendarList.list({ maxResults: 1 });
+
+		return {
+			connected: true,
+			status: 'connected',
+			email: cred.google_account_email,
+			default_calendar_id: cred.default_calendar_id,
+			connected_at: cred.connected_at,
+		};
+	} catch (err) {
+		const isInvalidGrant = err.message?.includes('invalid_grant');
+		return {
+			connected: false,
+			status: 'error',
+			email: cred.google_account_email,
+			token_expiry: cred.token_expiry,
+			error_message: isInvalidGrant
+				? 'A conexão expirou ou foi revogada. Reconecte a conta Google.'
+				: 'Erro ao conectar com o Google Agenda.',
+		};
+	}
+}
+
+
 /**
  * Retorna um OAuth2Client autenticado para o client_id, pronto pra chamar a API.
  * Se o access_token estiver expirado, a lib renova sozinha (evento 'tokens')
@@ -521,5 +568,6 @@ module.exports = {
 	getClientSchedulingConfig,
 	calculateFreeSlots,
 	getNextAvailableSlots,
+	getConnectionStatus,
 	ServiceError,
 };

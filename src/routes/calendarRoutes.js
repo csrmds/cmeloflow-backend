@@ -13,6 +13,7 @@ router.get('/google/callback', controller.googleCallback);
 router.get('/calendars', auth, controller.listCalendars);
 router.get('/default', auth, controller.getDefaultCalendar);
 router.post('/default', auth, controller.setDefaultCalendar);
+router.get('/status', auth, controller.getConnectionStatus);
 
 // Eventos — chamadas pelo frontend (JWT), usado pelo react-big-calendar
 router.get('/events', auth, controller.listEvents);

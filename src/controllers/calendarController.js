@@ -70,6 +70,16 @@ exports.setDefaultCalendar = async (req, res) => {
 	}
 };
 
+// GET /calendar/status
+exports.getConnectionStatus = async (req, res) => {
+	try {
+		const status = await calendarService.getConnectionStatus(req.user.client_id);
+		return response.success(res, status, '', 200);
+	} catch (err) {
+		return response.handleError(res, err, 'Erro ao consultar status da conexão');
+	}
+};
+
 // ──────────────────────────────────────────────────────────────────────────
 // Eventos — frontend (autenticado, react-big-calendar)
 // ──────────────────────────────────────────────────────────────────────────
