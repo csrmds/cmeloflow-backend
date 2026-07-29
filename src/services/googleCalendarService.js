@@ -224,7 +224,7 @@ async function listCalendars(clientId) {
 
 	const { data } = await calendar.calendarList.list();
 
-	//console.log("dataList: ", data)
+	logger.info({data}, 'result listCalendars')
 
 	return (data.items ?? [])
 		.filter((c) => c.accessRole === 'owner' || c.accessRole === 'writer')
@@ -288,6 +288,8 @@ async function getAvailability(clientId, timeMin, timeMax, calendarId = null) {
 	const calendar = google.calendar({ version: 'v3', auth });
 	const resolvedId = resolveCalendarId(credRow, calendarId);
 
+	logger.info({reqParams: {timeMin, timeMax, resolvedId}}, 'getAvailability params:')
+
 	const { data } = await calendar.freebusy.query({
 		requestBody: {
 			timeMin,
@@ -297,6 +299,7 @@ async function getAvailability(clientId, timeMin, timeMax, calendarId = null) {
 	});
 
 	const busy = data.calendars?.[resolvedId]?.busy ?? [];
+	logger.info({responseBody: {calendarId: resolvedId, timeMin, timeMax, busy}}, 'getAvailability response:')
 	return { calendarId: resolvedId, timeMin, timeMax, busy };
 }
 
@@ -309,6 +312,8 @@ async function getAvailability(clientId, timeMin, timeMax, calendarId = null) {
  */
 async function listEvents(clientId, timeMin, timeMax, calendarId = null) {
 	logger.info("CalendarService listEvents:")
+	logger.info({ reqParams: { clientId, timeMin, timeMax, calendarId } }, 'listEvents params');
+
 	const credRow = await getCredentialsRow(clientId);
 	const auth = await getAuthenticatedClient(clientId, credRow);
 	const calendar = google.calendar({ version: 'v3', auth });
@@ -322,7 +327,7 @@ async function listEvents(clientId, timeMin, timeMax, calendarId = null) {
 		orderBy: 'startTime',
 	});
 
-	//console.log("\nEvents:\n:", data.items)
+	logger.info( { responseBody: { calendarId: resolvedId, total: events.length, events } }, 'listEvents response');
 
 	return data.items ?? [];
 }
@@ -333,6 +338,7 @@ async function listEvents(clientId, timeMin, timeMax, calendarId = null) {
  */
 async function listEventsByLead(clientId, leadWhatsapp, opts = {}) {
 	logger.info("CalendarService listEventsByLead:")
+	
 	if (!leadWhatsapp) {
 		throw new ServiceError('leadWhatsapp é obrigatório', 400);
 	}
@@ -341,6 +347,17 @@ async function listEventsByLead(clientId, leadWhatsapp, opts = {}) {
 	const auth = await getAuthenticatedClient(clientId, credRow);
 	const calendar = google.calendar({ version: 'v3', auth });
 	const resolvedId = resolveCalendarId(credRow, opts.calendarId);
+
+	logger.info({ 
+		reqParams: { 
+			resolvedId, 
+			timeMin: opts.timeMin, 
+			timeMax: opts.timeMax, 
+			singleEvents: true,
+			orderBy: 'startTime',
+			privateExtendedProperty: [`lead_whatsapp=${leadWhatsapp}`] 
+		}
+	}, 'listEvents params');
 
 	const { data } = await calendar.events.list({
 		calendarId: resolvedId,
@@ -352,6 +369,7 @@ async function listEventsByLead(clientId, leadWhatsapp, opts = {}) {
 		privateExtendedProperty: [`lead_whatsapp=${leadWhatsapp}`],
 	});
 
+	logger.info({responseBory: data.items ?? []})
 	return data.items ?? [];
 
 }
@@ -464,6 +482,7 @@ async function getClientSchedulingConfig(clientId) {
  * @param {{ slotDurationMinutes: number, businessHourStart: number, businessHourEnd: number, maxResults: number }} opts
  */
 function calculateFreeSlots(busy, fromDate, opts) {
+	logger.info("Calendar Service - calculateFreeSlots")
 	const { slotDurationMinutes, businessHourStart, businessHourEnd, maxResults } = opts;
 	const slotMs = slotDurationMinutes * 60 * 1000;
 
@@ -471,10 +490,12 @@ function calculateFreeSlots(busy, fromDate, opts) {
 	const busyIntervals = busy
 		.map((b) => ({ start: new Date(b.start), end: new Date(b.end) }))
 		.sort((a, b) => a.start - b.start);
+	logger.info({busyIntervals: busyIntervals})
 
 	const freeSlots = [];
 	let cursorDay = new Date(fromDate);
 	cursorDay.setSeconds(0, 0);
+	logger.info({freeSlots: freeSlots})
 
 	for (let dayOffset = 0; dayOffset < MAX_DAYS_LOOKAHEAD_DEFAULT && freeSlots.length < maxResults; dayOffset++) {
 		const day = new Date(cursorDay.getTime() + dayOffset * 24 * 60 * 60 * 1000);
@@ -512,11 +533,14 @@ function calculateFreeSlots(busy, fromDate, opts) {
 		}
 	}
 
+	logger.info({freeSlots: freeSlots}, 'responseBody')
+
 	return freeSlots;
 }
 
 
 async function getNextAvailableSlots(clientId, timeMin, timeMax, calendarId = null, opts = {}) {
+	logger.info("Calendar Service - getNextAvailableSlots")
 	const dbConfig = await getClientSchedulingConfig(clientId);
 
 	const businessHourStart = opts.businessHourStart ?? dbConfig?.business_hour_start
@@ -533,6 +557,7 @@ async function getNextAvailableSlots(clientId, timeMin, timeMax, calendarId = nu
 	const calendar = google.calendar({ version: 'v3', auth });
 	const resolvedId = resolveCalendarId(credRow, calendarId);
 
+	logger.info({timeMin, timeMax, items: [{ id: resolvedId }]}, "resquestParams")
 	const { data } = await calendar.freebusy.query({
 		requestBody: { timeMin, timeMax, items: [{ id: resolvedId }] },
 	});
@@ -546,6 +571,7 @@ async function getNextAvailableSlots(clientId, timeMin, timeMax, calendarId = nu
 		maxDaysLookahead,
 	});
 
+	logger.info({calendarId: resolvedId, slotDurationMinutes, businessHourStart, businessHourEnd, slots}, 'responseBody')
 	return { calendarId: resolvedId, slotDurationMinutes, businessHourStart, businessHourEnd, slots };
 }
 
