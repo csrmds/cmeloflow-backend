@@ -9,6 +9,9 @@ const { FRONTEND_URL } = require('../config/passport');
 
 // GET /calendar/google/connect
 exports.getConnectUrl = async (req, res) => {
+	logger.info('\nCalendar Controller - getConnectUrl');
+	logger.info({ reqParam: req.params }, 'reqParams');
+	logger.info({ reqQuery: req.query }, 'reqQuery');
 	try {
 		const url = calendarService.getAuthUrl(req.user.client_id);
 		console.log("getConnectUrl: ", url)
@@ -21,6 +24,9 @@ exports.getConnectUrl = async (req, res) => {
 // GET /calendar/google/callback (redirect do Google — sem JWT, client_id vem do state)
 exports.googleCallback = async (req, res) => {
 	const { code, state, error } = req.query;
+	logger.info('\nCalendar Controller - googleCallback');
+	logger.info({ reqParam: req.params }, 'reqParams');
+	logger.info({ reqQuery: req.query }, 'reqQuery');
 
 	if (error || !code || !state) {
 		console.log("googleCallback error: ", error)
@@ -42,6 +48,9 @@ exports.googleCallback = async (req, res) => {
 
 // GET /calendar/calendars
 exports.listCalendars = async (req, res) => {
+	logger.info('\nCalendar Controller - listCalendars');
+	logger.info({ reqParam: req.params }, 'reqParams');
+	logger.info({ reqQuery: req.query }, 'reqQuery');
 	try {
 		const calendars = await calendarService.listCalendars(req.user.client_id);
 		return response.success(res, calendars, '', 200);
@@ -52,8 +61,12 @@ exports.listCalendars = async (req, res) => {
 
 // GET /calendar/default
 exports.getDefaultCalendar = async (req, res) => {
+	logger.info('\nCalendar Controller - getDefaultCalendar');
+	logger.info({ reqParam: req.params }, 'reqParams');
+	logger.info({ reqQuery: req.query }, 'reqQuery');
 	try {
 		const calendarId = await calendarService.getDefaultCalendarId(req.user.client_id);
+		//logger.info({ reponse: req.params }, 'response');
 		return response.success(res, { calendarId }, '', 200);
 	} catch (err) {
 		return response.handleError(res, err, 'Erro ao consultar agenda padrão');
@@ -62,6 +75,8 @@ exports.getDefaultCalendar = async (req, res) => {
 
 // POST /calendar/default   body: { calendarId }
 exports.setDefaultCalendar = async (req, res) => {
+	logger.info('\nCalendar Controller - setDefaultCalendar');
+	logger.info({ bodyRequest: req.body }, 'bodyRequest');
 	try {
 		const result = await calendarService.setDefaultCalendar(req.user.client_id, req.body.calendarId);
 		return response.success(res, result, 'Agenda padrão atualizada', 200);
@@ -72,6 +87,9 @@ exports.setDefaultCalendar = async (req, res) => {
 
 // GET /calendar/status
 exports.getConnectionStatus = async (req, res) => {
+	logger.info('\nCalendar Controller - getConnectionStatus');
+	logger.info({ reqParam: req.params }, 'reqParams');
+	logger.info({ reqQuery: req.query }, 'reqQuery');
 	try {
 		const status = await calendarService.getConnectionStatus(req.user.client_id);
 		return response.success(res, status, '', 200);
@@ -88,7 +106,8 @@ exports.getConnectionStatus = async (req, res) => {
 exports.listEvents = async (req, res) => {
 	logger.info('\nCalendar Controller - listEvents');
 	const { timeMin, timeMax, calendarId } = req.query;
-	logger.info({ bodyRequest: req.body }, 'bodyRequest');
+	logger.info({ reqParam: req.params }, 'reqParams');
+	logger.info({ reqQuery: req.query }, 'reqQuery');
 
 	if (!timeMin || !timeMax) {
 		return response.error(res, 'timeMin e timeMax são obrigatórios', 400);
@@ -104,6 +123,8 @@ exports.listEvents = async (req, res) => {
 
 // POST /calendar/lead-events   body: { client_id, lead_whatsapp, calendarId?, timeMin?, timeMax?, maxResults? }
 exports.listEventsByLead = async (req, res) => {
+	logger.info('\nCalendar Controller - listEventsByLead');
+	logger.info({ bodyRequest: req.body }, 'bodyRequest');
 	const client_id= req.user?.client_id ?? req.body.client_id
 	const { lead_whatsapp, calendarId, timeMin, timeMax, maxResults } = req.body;
 
@@ -220,12 +241,13 @@ exports.createEventInternal = async (req, res) => {
 // body: { client_id, timeMin, timeMax, calendarId?, slotDurationMinutes?, businessHourStart?, businessHourEnd?, maxResults? }
 exports.getNextAvailableSlots = async (req, res) => {
 	logger.info('\nCalendar Controller - getNextAvailableSlots');
+	logger.info({ bodyRequest: req.body }, 'bodyRequest');
 	const {
 		client_id, timeMin, timeMax, calendarId,
 		slotDurationMinutes, businessHourStart, businessHourEnd,
 		maxResults, maxDaysLookahead,
 	} = req.body;
-	logger.info({ bodyRequest: req.body }, 'bodyRequest');
+	
 
 	if (!client_id || !timeMin || !timeMax) {
 		return response.error(res, 'client_id, timeMin e timeMax são obrigatórios', 400);

@@ -10,6 +10,7 @@ const handleError = (res, err, fallbackMessage = 'Erro inesperado') => {
 };
 
 const success = (res, data = {}, message = "Sucesso", statusCode = 200) => {
+	logger.info({ data }, 'responseSuccess');
   return res.status(statusCode).json({
     success: true,
     message,

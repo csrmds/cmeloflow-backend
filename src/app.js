@@ -13,7 +13,7 @@ const sessionRoutes = require('./routes/sessionRoutes')
 const calendarRoutes = require('./routes/calendarRoutes')
 
 //CONFIG LOGGER
-app.use(pinoHttp({ logger }));
+//app.use(pinoHttp({ logger }));
 
 //CONFIG CORS
 app.use((req, res, next) => {
