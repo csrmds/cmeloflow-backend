@@ -9,7 +9,7 @@ const { FRONTEND_URL } = require('../config/passport');
 
 // GET /calendar/google/connect
 exports.getConnectUrl = async (req, res) => {
-	logger.info('\nCalendar Controller - getConnectUrl');
+	logger.info('Calendar Controller - getConnectUrl');
 	logger.info({ reqParam: req.params }, 'reqParams');
 	logger.info({ reqQuery: req.query }, 'reqQuery');
 	try {
@@ -24,7 +24,7 @@ exports.getConnectUrl = async (req, res) => {
 // GET /calendar/google/callback (redirect do Google — sem JWT, client_id vem do state)
 exports.googleCallback = async (req, res) => {
 	const { code, state, error } = req.query;
-	logger.info('\nCalendar Controller - googleCallback');
+	logger.info('Calendar Controller - googleCallback');
 	logger.info({ reqParam: req.params }, 'reqParams');
 	logger.info({ reqQuery: req.query }, 'reqQuery');
 
@@ -48,7 +48,7 @@ exports.googleCallback = async (req, res) => {
 
 // GET /calendar/calendars
 exports.listCalendars = async (req, res) => {
-	logger.info('\nCalendar Controller - listCalendars');
+	logger.info('Calendar Controller - listCalendars');
 	logger.info({ reqParam: req.params }, 'reqParams');
 	logger.info({ reqQuery: req.query }, 'reqQuery');
 	try {
@@ -61,7 +61,7 @@ exports.listCalendars = async (req, res) => {
 
 // GET /calendar/default
 exports.getDefaultCalendar = async (req, res) => {
-	logger.info('\nCalendar Controller - getDefaultCalendar');
+	logger.info('Calendar Controller - getDefaultCalendar');
 	logger.info({ reqParam: req.params }, 'reqParams');
 	logger.info({ reqQuery: req.query }, 'reqQuery');
 	try {
@@ -75,7 +75,7 @@ exports.getDefaultCalendar = async (req, res) => {
 
 // POST /calendar/default   body: { calendarId }
 exports.setDefaultCalendar = async (req, res) => {
-	logger.info('\nCalendar Controller - setDefaultCalendar');
+	logger.info('Calendar Controller - setDefaultCalendar');
 	logger.info({ bodyRequest: req.body }, 'bodyRequest');
 	try {
 		const result = await calendarService.setDefaultCalendar(req.user.client_id, req.body.calendarId);
@@ -87,7 +87,7 @@ exports.setDefaultCalendar = async (req, res) => {
 
 // GET /calendar/status
 exports.getConnectionStatus = async (req, res) => {
-	logger.info('\nCalendar Controller - getConnectionStatus');
+	logger.info('Calendar Controller - getConnectionStatus');
 	logger.info({ reqParam: req.params }, 'reqParams');
 	logger.info({ reqQuery: req.query }, 'reqQuery');
 	try {
@@ -104,7 +104,7 @@ exports.getConnectionStatus = async (req, res) => {
 
 // GET /calendar/events   query: timeMin, timeMax, calendarId?
 exports.listEvents = async (req, res) => {
-	logger.info('\nCalendar Controller - listEvents');
+	logger.info('Calendar Controller - listEvents');
 	const { timeMin, timeMax, calendarId } = req.query;
 	logger.info({ reqParam: req.params }, 'reqParams');
 	logger.info({ reqQuery: req.query }, 'reqQuery');
@@ -123,7 +123,7 @@ exports.listEvents = async (req, res) => {
 
 // POST /calendar/lead-events   body: { client_id, lead_whatsapp, calendarId?, timeMin?, timeMax?, maxResults? }
 exports.listEventsByLead = async (req, res) => {
-	logger.info('\nCalendar Controller - listEventsByLead');
+	logger.info('Calendar Controller - listEventsByLead');
 	logger.info({ bodyRequest: req.body }, 'bodyRequest');
 	const client_id= req.user?.client_id ?? req.body.client_id
 	const { lead_whatsapp, calendarId, timeMin, timeMax, maxResults } = req.body;
@@ -144,7 +144,7 @@ exports.listEventsByLead = async (req, res) => {
 
 // POST /calendar/events   body: { summary, description?, start, end, attendeeEmail?, calendarId? }
 exports.createEvent = async (req, res) => {
-	logger.info('\nCalendar Controller - createEvent');
+	logger.info('Calendar Controller - createEvent');
 	logger.info({ bodyRequest: req.body }, 'bodyRequest');
 	try {
 		const event = await calendarService.createEvent(req.user.client_id, req.body);
@@ -156,7 +156,7 @@ exports.createEvent = async (req, res) => {
 
 // PUT /calendar/events/:eventId
 exports.updateEvent = async (req, res) => {
-	logger.info('\nCalendar Controller - updateEvent');
+	logger.info('Calendar Controller - updateEvent');
 	logger.info({ bodyRequest: req.body }, 'bodyRequest');
 
 	const client_id= req.user?.client_id ?? req.body.client_id
@@ -175,7 +175,7 @@ exports.updateEvent = async (req, res) => {
 
 // DELETE /calendar/events/:eventId   body: {calendarId, client_id}
 exports.deleteEvent = async (req, res) => {
-	logger.info('\nCalendar Controller - deleteEvent');
+	logger.info('Calendar Controller - deleteEvent');
 	logger.info({ url: req.originalUrl }, 'url');
 	logger.info({ bodyRequest: req.body }, 'bodyRequest');
 	logger.info({ reqParam: req.params }, 'reqParams');
@@ -202,7 +202,7 @@ exports.deleteEvent = async (req, res) => {
 
 // POST /calendar/agent/availability   body: { client_id, timeMin, timeMax, calendarId? }
 exports.checkAvailability = async (req, res) => {
-	logger.info('\nCalendar Controller - checkAvailability');
+	logger.info('Calendar Controller - checkAvailability');
 	const { client_id, timeMin, timeMax, calendarId } = req.body;
 	logger.info({ bodyRequest: req.body }, 'bodyRequest');
 
@@ -221,7 +221,7 @@ exports.checkAvailability = async (req, res) => {
 // POST /calendar/agent/create   
 // body: { client_id, summary, description?, start, end, attendeeEmail?, calendarId? }
 exports.createEventInternal = async (req, res) => {
-	logger.info('\nCalendar Controller - createEventInternal');
+	logger.info('Calendar Controller - createEventInternal');
 	const { client_id, ...eventData } = req.body;
 	logger.info({ bodyRequest: req.body }, 'bodyRequest');
 
@@ -240,7 +240,7 @@ exports.createEventInternal = async (req, res) => {
 // POST /calendar/agent/next-available-slots
 // body: { client_id, timeMin, timeMax, calendarId?, slotDurationMinutes?, businessHourStart?, businessHourEnd?, maxResults? }
 exports.getNextAvailableSlots = async (req, res) => {
-	logger.info('\nCalendar Controller - getNextAvailableSlots');
+	logger.info('Calendar Controller - getNextAvailableSlots');
 	logger.info({ bodyRequest: req.body }, 'bodyRequest');
 	const {
 		client_id, timeMin, timeMax, calendarId,

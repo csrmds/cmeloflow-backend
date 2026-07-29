@@ -1,5 +1,6 @@
 const { google } = require('googleapis');
 const pool = require('../config/database');
+const logger = require('../config/logger');
 const ServiceError = require('../utils/ServiceError');
 const { encrypt, decrypt } = require('../utils/tokenCrypto');
 
@@ -43,7 +44,7 @@ function brazilHourToUTC(referenceDate, hour) {
  * @param {number|string} clientId
  */
 function getAuthUrl(clientId) {
-	console.log("\n\nCalendar Service - getAuthUrl")
+	logger.info("Calendar Service - getAuthUrl")
 	const oauth2Client = newOAuthClient();
 
 	return oauth2Client.generateAuthUrl({
@@ -60,41 +61,39 @@ function getAuthUrl(clientId) {
  * @param {number|string} clientId
  */
 async function connectCalendar(code, clientId) {
-	console.log("\n\nCalendar Service - connectCalendar")
+	logger.info("Calendar Service - connectCalendar")
+	logger.info({ code, clientId }, 'parametros');
 	const oauth2Client = newOAuthClient();
 	const { tokens } = await oauth2Client.getToken(code);
 
 	if (!tokens.refresh_token) {
-		throw new ServiceError(
-			'Google não retornou refresh_token. Revogue o acesso em myaccount.google.com/permissions e tente novamente.',
-			400
-		);
+		throw new ServiceError( 'Google não retornou refresh_token. Revogue o acesso em myaccount.google.com/permissions e tente novamente.', 400 );
 	}
 
 	oauth2Client.setCredentials(tokens);
 	const oauth2 = google.oauth2({ auth: oauth2Client, version: 'v2' });
 	const { data: profile } = await oauth2.userinfo.get();
 
-	await pool.query(
-		`INSERT INTO client_calendar_credentials
+	const sql = `INSERT INTO client_calendar_credentials
 			(client_id, provider, google_account_email, access_token, refresh_token, token_expiry, scope)
-		 VALUES (?, 'google', ?, ?, ?, ?, ?)
-		 ON DUPLICATE KEY UPDATE
+		 	VALUES (?, 'google', ?, ?, ?, ?, ?)
+			ON DUPLICATE KEY UPDATE
 			google_account_email = VALUES(google_account_email),
 			access_token = VALUES(access_token),
 			refresh_token = VALUES(refresh_token),
 			token_expiry = VALUES(token_expiry),
 			scope = VALUES(scope),
-			updated_at = NOW()`,
-		[
+			updated_at = NOW()`
+	const params = [
 			clientId,
 			profile.email ?? null,
 			encrypt(tokens.access_token),
 			encrypt(tokens.refresh_token),
 			toMysqlDatetime(tokens.expiry_date),
 			tokens.scope ?? null,
-		]
-	);
+	]
+	logger.debug({query: pool.format(sql, params)}, 'query setCredentials')
+	await pool.query(sql, params);
 
 
 	return { connected: true, email: profile.email ?? null };
@@ -105,7 +104,7 @@ async function connectCalendar(code, clientId) {
  * @param {number|string} clientId
  */
 async function getCredentialsRow(clientId) {
-	console.log("\n\nCalendar Service - getCredentialsRow")
+	logger.info("Calendar Service - getCredentialsRow")
 	const [rows] = await pool.query(
 		`SELECT * FROM client_calendar_credentials WHERE client_id = ? AND provider = 'google'`,
 		[clientId]
@@ -173,7 +172,7 @@ async function getConnectionStatus(clientId) {
  * @param {object} [credRow] - linha já carregada de client_calendar_credentials (evita 2ª query)
  */
 async function getAuthenticatedClient(clientId, credRow = null) {
-	console.log("\n\nCalendar Service - getAuthenticatedClient")
+	logger.info("Calendar Service - getAuthenticatedClient")
 	const cred = credRow ?? (await getCredentialsRow(clientId));
 	const oauth2Client = newOAuthClient();
 
@@ -219,7 +218,7 @@ function resolveCalendarId(credRow, calendarId) {
  * @param {number|string} clientId
  */
 async function listCalendars(clientId) {
-	console.log("\n\nCalendar Service - listCalendars")
+	logger.info("Calendar Service - listCalendars")
 	const auth = await getAuthenticatedClient(clientId);
 	const calendar = google.calendar({ version: 'v3', auth });
 
@@ -244,7 +243,7 @@ async function listCalendars(clientId) {
  * @param {number|string} clientId
  */
 async function getDefaultCalendarId(clientId) {
-	console.log("\n\nCalendar Service - getDefaultCalendarId")
+	logger.info("Calendar Service - getDefaultCalendarId")
 	const credRow = await getCredentialsRow(clientId);
 	return resolveCalendarId(credRow, null);
 }
@@ -256,7 +255,7 @@ async function getDefaultCalendarId(clientId) {
  * @param {string} calendarId
  */
 async function setDefaultCalendar(clientId, calendarId) {
-	console.log("\n\nCalendar Service - setDefaultCalendar")
+	logger.info("Calendar Service - setDefaultCalendar")
 	if (!calendarId) {
 		throw new ServiceError('calendarId é obrigatório', 400);
 	}
@@ -283,7 +282,7 @@ async function setDefaultCalendar(clientId, calendarId) {
  * @param {string} [calendarId] - se omitido, usa a agenda padrão do cliente
  */
 async function getAvailability(clientId, timeMin, timeMax, calendarId = null) {
-	console.log("\n\nCalendar Service - getAvailability")
+	logger.info("Calendar Service - getAvailability")
 	const credRow = await getCredentialsRow(clientId);
 	const auth = await getAuthenticatedClient(clientId, credRow);
 	const calendar = google.calendar({ version: 'v3', auth });
@@ -309,7 +308,7 @@ async function getAvailability(clientId, timeMin, timeMax, calendarId = null) {
  * @param {string} [calendarId] - se omitido, usa a agenda padrão do cliente
  */
 async function listEvents(clientId, timeMin, timeMax, calendarId = null) {
-	console.log("\n\nCalendarService listEvents:")
+	logger.info("CalendarService listEvents:")
 	const credRow = await getCredentialsRow(clientId);
 	const auth = await getAuthenticatedClient(clientId, credRow);
 	const calendar = google.calendar({ version: 'v3', auth });
@@ -333,7 +332,7 @@ async function listEvents(clientId, timeMin, timeMax, calendarId = null) {
  **
  */
 async function listEventsByLead(clientId, leadWhatsapp, opts = {}) {
-	console.log("\n\nCalendarService listEventsByLead:")
+	logger.info("CalendarService listEventsByLead:")
 	if (!leadWhatsapp) {
 		throw new ServiceError('leadWhatsapp é obrigatório', 400);
 	}
@@ -364,7 +363,7 @@ async function listEventsByLead(clientId, leadWhatsapp, opts = {}) {
  * @param {{ summary: string, description?: string, start: string, end: string, attendeeEmail?: string, calendarId?: string }} eventData
  */
 async function createEvent(clientId, eventData) {
-	console.log("\n\nCalendarService createEvent:")
+	logger.info("CalendarService createEvent:")
 	const { summary, description, start, end, attendeeEmail, calendarId, leadWhatsapp } = eventData;
 
 	if (!summary || !start || !end) {
@@ -430,7 +429,7 @@ async function updateEvent(clientId, eventId, eventData) {
  * @param {string} [calendarId] - se omitido, usa a agenda padrão do cliente
  */
 async function deleteEvent(clientId, eventId, calendarId = null) {
-	console.log("\n\nCalendar Service - deleteEvent")
+	logger.info("Calendar Service - deleteEvent")
 	const credRow = await getCredentialsRow(clientId);
 	const auth = await getAuthenticatedClient(clientId, credRow);
 	const calendar = google.calendar({ version: 'v3', auth });
@@ -441,7 +440,7 @@ async function deleteEvent(clientId, eventId, calendarId = null) {
 		eventId,
 	});
 
-	console.log("result calendar.events.delete: \n", result)
+	logger.info("result calendar.events.delete: \n", result)
 
 	return true;
 }
