@@ -357,7 +357,7 @@ async function listEventsByLead(clientId, leadWhatsapp, opts = {}) {
 			orderBy: 'startTime',
 			privateExtendedProperty: [`lead_whatsapp=${leadWhatsapp}`] 
 		}
-	}, 'listEvents params');
+	}, 'listEventsByLead params');
 
 	const { data } = await calendar.events.list({
 		calendarId: resolvedId,
@@ -369,7 +369,7 @@ async function listEventsByLead(clientId, leadWhatsapp, opts = {}) {
 		privateExtendedProperty: [`lead_whatsapp=${leadWhatsapp}`],
 	});
 
-	logger.info({responseBory: data.items ?? []})
+	//logger.info({responseBody: data.items ?? []})
 	return data.items ?? [];
 
 }
