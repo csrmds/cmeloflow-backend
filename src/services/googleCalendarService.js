@@ -92,7 +92,7 @@ async function connectCalendar(code, clientId) {
 			toMysqlDatetime(tokens.expiry_date),
 			tokens.scope ?? null,
 	]
-	logger.debug({query: pool.format(sql, params)}, 'query setCredentials')
+	logger.info({query: pool.format(sql, params)}, 'query setCredentials')
 	await pool.query(sql, params);
 
 
