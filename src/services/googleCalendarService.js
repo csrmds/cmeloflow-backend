@@ -327,7 +327,7 @@ async function listEvents(clientId, timeMin, timeMax, calendarId = null) {
 		orderBy: 'startTime',
 	});
 
-	logger.info( { responseBody: { calendarId: resolvedId, total: events.length, events } }, 'listEvents response');
+	logger.info( { responseBody: data.items ?? [] }, 'listEvents response');
 
 	return data.items ?? [];
 }
