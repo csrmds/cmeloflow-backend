@@ -299,7 +299,7 @@ async function getAvailability(clientId, timeMin, timeMax, calendarId = null) {
 	});
 
 	const busy = data.calendars?.[resolvedId]?.busy ?? [];
-	logger.info({responseBody: {calendarId: resolvedId, timeMin, timeMax, busy}}, 'getAvailability response:')
+	//logger.info({responseBody: {calendarId: resolvedId, timeMin, timeMax, busy}}, 'getAvailability response:')
 	return { calendarId: resolvedId, timeMin, timeMax, busy };
 }
 
@@ -483,8 +483,9 @@ async function getClientSchedulingConfig(clientId) {
  */
 function calculateFreeSlots(busy, fromDate, opts) {
 	logger.info("Calendar Service - calculateFreeSlots")
-	const { slotDurationMinutes, businessHourStart, businessHourEnd, maxResults } = opts;
+	const { slotDurationMinutes, businessHourStart, businessHourEnd, maxResults, maxDaysLookahead } = opts;
 	const slotMs = slotDurationMinutes * 60 * 1000;
+	const lookaheadDays = maxDaysLookahead ?? MAX_DAYS_LOOKAHEAD_DEFAULT;
 
 	// Normaliza e ordena os intervalos ocupados
 	const busyIntervals = busy
@@ -493,23 +494,21 @@ function calculateFreeSlots(busy, fromDate, opts) {
 	logger.info({busyIntervals: busyIntervals})
 
 	const freeSlots = [];
-	let cursorDay = new Date(fromDate);
-	cursorDay.setSeconds(0, 0);
-	logger.info({freeSlots: freeSlots})
+	const cursorDay = new Date(fromDate);
+	cursorDay.setUTCSeconds(0, 0);
 
-	for (let dayOffset = 0; dayOffset < MAX_DAYS_LOOKAHEAD_DEFAULT && freeSlots.length < maxResults; dayOffset++) {
+	for (let dayOffset = 0; dayOffset < lookaheadDays && freeSlots.length < maxResults; dayOffset++) {
 		const day = new Date(cursorDay);
 		day.setDate(day.getDate());
 
-		let slotStart = brazilHourToUTC(day, businessHourStart)
-		const dayEnd = brazilHourToUTC(day, businessHourEnd)
+		let slotStart = brazilHourToUTC(day, businessHourStart);
+		const dayEnd = brazilHourToUTC(day, businessHourEnd);
 
 		// No primeiro dia, não sugerir horário que já passou
 		if (dayOffset === 0 && slotStart < fromDate) {
 			slotStart = new Date(fromDate);
-			// arredonda pra próxima hora cheia
-			slotStart.setMinutes(0, 0, 0);
-			slotStart.setHours(slotStart.getHours() + 1);
+			slotStart.setUTCMinutes(0, 0, 0);
+			slotStart.setUTCHours(slotStart.getUTCHours() + 1);
 		}
 
 		while (slotStart.getTime() + slotMs <= dayEnd.getTime() && freeSlots.length < maxResults) {
@@ -533,7 +532,7 @@ function calculateFreeSlots(busy, fromDate, opts) {
 		}
 	}
 
-	logger.info({freeSlots: freeSlots}, 'responseBody')
+	//logger.info({freeSlots: freeSlots}, 'responseBody')
 
 	return freeSlots;
 }
@@ -571,7 +570,7 @@ async function getNextAvailableSlots(clientId, timeMin, timeMax, calendarId = nu
 		maxDaysLookahead,
 	});
 
-	logger.info({calendarId: resolvedId, slotDurationMinutes, businessHourStart, businessHourEnd, slots}, 'responseBody')
+	//logger.info({calendarId: resolvedId, slotDurationMinutes, businessHourStart, businessHourEnd, slots}, 'responseBody')
 	return { calendarId: resolvedId, slotDurationMinutes, businessHourStart, businessHourEnd, slots };
 }
 
