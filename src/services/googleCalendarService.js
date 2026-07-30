@@ -104,7 +104,7 @@ async function connectCalendar(code, clientId) {
  * @param {number|string} clientId
  */
 async function getCredentialsRow(clientId) {
-	logger.info("Calendar Service - getCredentialsRow")
+	//logger.info("Calendar Service - getCredentialsRow")
 	const [rows] = await pool.query(
 		`SELECT * FROM client_calendar_credentials WHERE client_id = ? AND provider = 'google'`,
 		[clientId]
@@ -172,7 +172,7 @@ async function getConnectionStatus(clientId) {
  * @param {object} [credRow] - linha já carregada de client_calendar_credentials (evita 2ª query)
  */
 async function getAuthenticatedClient(clientId, credRow = null) {
-	logger.info("Calendar Service - getAuthenticatedClient")
+	//logger.info("Calendar Service - getAuthenticatedClient")
 	const cred = credRow ?? (await getCredentialsRow(clientId));
 	const oauth2Client = newOAuthClient();
 
@@ -498,8 +498,8 @@ function calculateFreeSlots(busy, fromDate, opts) {
 	logger.info({freeSlots: freeSlots})
 
 	for (let dayOffset = 0; dayOffset < MAX_DAYS_LOOKAHEAD_DEFAULT && freeSlots.length < maxResults; dayOffset++) {
-		const day = new Date(cursorDay.getTime() + dayOffset * 24 * 60 * 60 * 1000);
-		day.setDate(day.getDate() + dayOffset);
+		const day = new Date(cursorDay);
+		day.setDate(day.getDate());
 
 		let slotStart = brazilHourToUTC(day, businessHourStart)
 		const dayEnd = brazilHourToUTC(day, businessHourEnd)
