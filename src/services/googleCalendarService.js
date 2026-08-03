@@ -496,10 +496,15 @@ function calculateFreeSlots(busy, fromDate, opts) {
 	const freeSlots = [];
 	const cursorDay = new Date(fromDate);
 	cursorDay.setUTCSeconds(0, 0);
+	const businessDays = opts.businessDays ?? [1,2,3,4,5];
 
 	for (let dayOffset = 0; dayOffset < lookaheadDays && freeSlots.length < maxResults; dayOffset++) {
 		const day = new Date(cursorDay);
-		day.setDate(day.getDate());
+		day.setUTCDate(cursorDay.getUTCDate() + dayOffset);
+
+		//verifica os dias da semana que a empresa está aberta para agendamento
+		const brazilWeekday = new Date(day.getTime() + BR_OFFSET_MS).getUTCDay();
+    	if (!businessDays.includes(brazilWeekday)) continue;
 
 		let slotStart = brazilHourToUTC(day, businessHourStart);
 		const dayEnd = brazilHourToUTC(day, businessHourEnd);
@@ -542,7 +547,7 @@ async function getNextAvailableSlots(clientId, timeMin, timeMax, calendarId = nu
 	logger.info("Calendar Service - getNextAvailableSlots")
 	const dbConfig = await getClientSchedulingConfig(clientId);
 
-	const businessHourStart = opts.businessHourStart ?? dbConfig?.business_hour_start
+	const businessHourStart = dbConfig?.business_hour_start ?? opts.businessHourStart
 
 	const businessHourEnd = opts.businessHourEnd ?? dbConfig?.business_hour_end
 
