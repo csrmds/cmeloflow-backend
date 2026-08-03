@@ -298,7 +298,10 @@ async function getAvailability(clientId, timeMin, timeMax, calendarId = null) {
 		},
 	});
 
-	const busy = data.calendars?.[resolvedId]?.busy ?? [];
+	const busy = (data.calendars?.[resolvedId]?.busy ?? []).map((b) => ({
+		start: toBrazilISOString(new Date(b.start)),
+		end: toBrazilISOString(new Date(b.end))
+	}));
 	//logger.info({responseBody: {calendarId: resolvedId, timeMin, timeMax, busy}}, 'getAvailability response:')
 	return { calendarId: resolvedId, timeMin, timeMax, busy };
 }
