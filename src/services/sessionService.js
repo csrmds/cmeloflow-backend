@@ -17,6 +17,8 @@ const ServiceError = require('../utils/ServiceError');
  *   instagram_scoped_userid?: string,
  *   instagram_username?: string,
  *   lead_name?: string,
+ *   lead_email?: string,
+ *   lead_status?: string,
  *   message?: string,
  * }} data
  */
@@ -30,6 +32,8 @@ async function init(data) {
 		instagram_scoped_userid,
 		instagram_username,
 		lead_name,
+		lead_email,
+		lead_status,
 		message,
 	} = data;
 
@@ -88,13 +92,13 @@ async function init(data) {
 		let leadRows;
 		if (source === 'whatsapp') {
 			[leadRows] = await conn.query(
-				`SELECT id, name, whatsapp_number, instagram_username, status, human_handover
+				`SELECT id, name, whatsapp_number, email, instagram_username, status, human_handover
          FROM leads WHERE client_id = ? AND whatsapp_number = ?`,
 				[client.c_id, lead_whatsapp]
 			);
 		} else {
 			[leadRows] = await conn.query(
-				`SELECT id, name, whatsapp_number, instagram_username, status, human_handover
+				`SELECT id, name, whatsapp_number, email, instagram_username, status, human_handover
          FROM leads WHERE client_id = ? AND instagram_scoped_userid = ?`,
 				[client.c_id, instagram_scoped_userid]
 			);
@@ -107,7 +111,7 @@ async function init(data) {
 			const [insertResult] = await conn.query(
 				`INSERT INTO leads
            (client_id, instagram_scoped_userid, instagram_username, name,
-            whatsapp_number, first_message, last_message, source, status, human_handover)
+            whatsapp_number, source, status, human_handover)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'novo', 0)`,
 				[
 					client.c_id,
@@ -115,8 +119,6 @@ async function init(data) {
 					instagram_username ?? null,
 					lead_name ?? null,
 					lead_whatsapp ?? null,
-					message ?? null,
-					message ?? null,
 					source,
 				]
 			);
@@ -131,19 +133,14 @@ async function init(data) {
 			};
 		} else {
 			lead = leadRows[0];
-			if (message) {
-				await conn.query(
-					'UPDATE leads SET last_message = ?, updated_at = NOW() WHERE id = ?',
-					[message, lead.id]
-				);
-			}
 		}
 
+		// Essa consulta não é mais retornada na sessionInit
 		// 5. Carrega produtos ativos do cliente
-		const [products] = await conn.query(
-			'SELECT id, name, description, price, type, keywords, requires_scheduling FROM products WHERE client_id = ? AND active = 1',
-			[client.c_id]
-		);
+		// const [products] = await conn.query(
+		// 	'SELECT id, name, description, price, type, keywords, requires_scheduling FROM products WHERE client_id = ? AND active = 1',
+		// 	[client.c_id]
+		// );
 
 		// 6. Verificar se o cliente tem credenciais do google agenda
 		const [calRows] = await conn.query(
@@ -173,7 +170,6 @@ async function init(data) {
 			},
 			workflow: { active: true },
 			lead: { ...lead, is_new },
-			//products,
 			calendar,
 		};
 	} finally {
