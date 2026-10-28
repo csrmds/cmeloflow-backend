@@ -26,6 +26,7 @@ exports.insert = async (req, res) => {
 // GET /leads
 exports.list = async (req, res) => {
 	try {
+		console.log("leadController - list: ", req.user)
 		const rows = await leadService.list(req.user);
 		return response.success(res, rows, 'Consulta realizada com sucesso', 200)
 	} catch (err) {

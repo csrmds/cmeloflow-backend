@@ -120,16 +120,14 @@ async function insert(user, data) {
  */
 async function list(user) {
 	const { client_id, user_role } = user;
+	console.log("leadService - client_id: ", client_id)
 
 	if (user_role === 'admin') {
 		const [rows] = await pool.query(`SELECT * FROM vw_clients_leads`);
 		return rows;
 	}
-
-	const [rows] = await pool.query(
-		`SELECT * FROM vw_clients_leads WHERE client_id = ?`,
-		[client_id]
-	);
+	
+	const [rows] = await pool.query( `SELECT * FROM vw_clients_leads WHERE client_id = ?`, [client_id] );
 	return rows;
 }
 

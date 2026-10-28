@@ -1,17 +1,18 @@
-const express = require('express');
-const session = require('express-session');
-const pinoHttp = require('pino-http');
-const logger = require('./config/logger');
+const express = require('express')
+const session = require('express-session')
+const pinoHttp = require('pino-http')
+const logger = require('./config/logger')
 const { passport } = require('./config/passport')
-const app = express();
-const authRoutes = require('./routes/authRoutes');
-const productRoutes = require('./routes/productRoutes');
-const leadRoutes = require('./routes/leadRoutes');
-const clientRoutes = require('./routes/clientRoutes');
-const workflowRoutes = require('./routes/workflowRoutes');
+const app = express()
+const authRoutes = require('./routes/authRoutes')
+const productRoutes = require('./routes/productRoutes')
+const leadRoutes = require('./routes/leadRoutes')
+const clientRoutes = require('./routes/clientRoutes')
+const workflowRoutes = require('./routes/workflowRoutes')
 const sessionRoutes = require('./routes/sessionRoutes')
 const calendarRoutes = require('./routes/calendarRoutes')
-const logRoutes = require('./routes/logRoutes');
+const logRoutes = require('./routes/logRoutes')
+const chatRoutes = require('./routes/chatRoutes')
 
 //CONFIG LOGGER
 //app.use(pinoHttp({ logger }));
@@ -40,6 +41,7 @@ app.use('/clients', clientRoutes);
 app.use('/workflow', workflowRoutes);
 app.use('/session', sessionRoutes)
 app.use('/calendar', calendarRoutes)
+app.use('/chat', chatRoutes)
 app.use('/logs', logRoutes);
 
 
