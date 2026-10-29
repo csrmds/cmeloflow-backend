@@ -40,7 +40,7 @@ async function getLead(clientId, leadId) {
 async function getMessages(clientId, leadId, afterId = 0) {
 	await getLead(clientId, leadId);
 	const [rows] = await pool.query(
-		`SELECT id, direction, sender, body, status, created_at
+		`SELECT id, direction, sender, body, status, error_code, error_message, created_at
 		 FROM chat_messages
 		 WHERE lead_id = ? AND client_id = ? AND id > ?
 		 ORDER BY id ASC LIMIT 500`,
@@ -104,6 +104,47 @@ async function sendMessage(clientId, leadId, body) {
 	return { id: result.insertId, direction: 'out', sender: 'client', body: text, status: 'sent' };
 }
 
+const STATUS_RANK = { sent: 1, delivered: 2, read: 3 };
+
+/**
+ * Chamado pelo n8n (x-api-key) com cada item de statuses[] do webhook da Meta.
+ * Atualiza o status da mensagem enviada (sent/delivered/read/failed).
+ * Se a mensagem não existe (ex.: enviada pela IA e não gravada), responde updated:false.
+ * @param {{ wa_message_id, status, error_code?, error_message? }} data
+ */
+async function updateStatus(data) {
+	const { wa_message_id, status } = data;
+	if (!wa_message_id || !status) {
+		throw new ServiceError('wa_message_id e status são obrigatórios', 400);
+	}
+	if (!['sent', 'delivered', 'read', 'failed'].includes(status)) {
+		throw new ServiceError('status inválido', 400);
+	}
+
+	const [rows] = await pool.query(
+		'SELECT id, status FROM chat_messages WHERE wa_message_id = ?',
+		[wa_message_id]
+	);
+	if (!rows.length) return { updated: false };
+
+	const current = rows[0].status;
+	// Não regride status (ex.: webhook "sent" chegando depois de "delivered")
+	if (status !== 'failed' && (STATUS_RANK[status] ?? 0) <= (STATUS_RANK[current] ?? 0)) {
+		return { updated: false };
+	}
+
+	await pool.query(
+		'UPDATE chat_messages SET status = ?, error_code = ?, error_message = ? WHERE id = ?',
+		[
+			status,
+			status === 'failed' ? data.error_code ?? null : null,
+			status === 'failed' ? String(data.error_message ?? '').slice(0, 500) || null : null,
+			rows[0].id,
+		]
+	);
+	return { updated: true };
+}
+
 /**
  * Chamado pelo n8n (x-api-key) para gravar mensagens de entrada (lead) e de
  * saída da IA.
@@ -134,4 +175,4 @@ async function recordMessage(data) {
 	return { id: result.insertId || null, duplicated: result.affectedRows === 0 };
 }
 
-module.exports = { listConversations, getMessages, sendMessage, recordMessage, ServiceError };
+module.exports = { listConversations, getMessages, sendMessage, recordMessage, updateStatus, ServiceError };

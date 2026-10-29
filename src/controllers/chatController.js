@@ -40,3 +40,13 @@ exports.recordMessage = async (req, res) => {
 		return response.handleError(res, err, 'Erro ao registrar mensagem');
 	}
 };
+
+// POST /chat/messages/status  (n8n via x-api-key)
+exports.updateStatus = async (req, res) => {
+	try {
+		const result = await chatService.updateStatus(req.body);
+		return response.success(res, result, 'Status processado', 200);
+	} catch (err) {
+		return response.handleError(res, err, 'Erro ao atualizar status da mensagem');
+	}
+};
