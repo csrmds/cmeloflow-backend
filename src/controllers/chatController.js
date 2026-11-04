@@ -50,3 +50,13 @@ exports.updateStatus = async (req, res) => {
 		return response.handleError(res, err, 'Erro ao atualizar status da mensagem');
 	}
 };
+
+// POST /chat/conversations/:leadId/template   body: { template_name, language?, variables? }
+exports.sendTemplate = async (req, res) => {
+	try {
+		const msg = await chatService.sendTemplate(req.user.client_id, req.params.leadId, req.body);
+		return response.success(res, msg, 'Modelo enviado', 201);
+	} catch (err) {
+		return response.handleError(res, err, 'Erro ao enviar modelo');
+	}
+};

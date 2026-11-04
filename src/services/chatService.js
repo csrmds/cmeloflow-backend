@@ -1,6 +1,7 @@
 const axios = require('axios');
 const pool = require('../config/database');
 const ServiceError = require('../utils/ServiceError');
+const templateService = require('./templateService');
 
 const graphUrl = () =>
 	`https://graph.facebook.com/${process.env.WHATSAPP_GRAPH_VERSION || 'v25.0'}`;
@@ -104,6 +105,72 @@ async function sendMessage(clientId, leadId, body) {
 	return { id: result.insertId, direction: 'out', sender: 'client', body: text, status: 'sent' };
 }
 
+/**
+ * Envia um modelo (template) aprovado pelo número principal e ativo do cliente.
+ * Necessário para falar com leads fora da janela de 24h.
+ * @param {{ template_name: string, language?: string, variables?: string[] }} data
+ */
+async function sendTemplate(clientId, leadId, data) {
+	const { template_name, language = 'pt_BR' } = data;
+	const variables = (data.variables ?? []).map((v) => String(v).trim());
+	if (!template_name) throw new ServiceError('template_name é obrigatório', 400);
+
+	const lead = await getLead(clientId, leadId);
+	if (!lead.whatsapp_number) {
+		throw new ServiceError('Este lead não possui número de WhatsApp', 422);
+	}
+
+	const [phones] = await pool.query(
+		`SELECT id, phone_number_id, waba_id FROM client_phones
+		 WHERE client_id = ? AND is_primary = 1 AND active = 1 LIMIT 1`,
+		[clientId]
+	);
+	if (!phones.length) throw new ServiceError('Cliente não possui número principal ativo', 422);
+	const phone = phones[0];
+	if (!phone.phone_number_id || !phone.waba_id) {
+		throw new ServiceError('Número principal sem phone_number_id/waba_id da Meta', 422);
+	}
+
+	const tpl = await templateService.findApproved(phone.waba_id, template_name, language);
+	if (variables.length !== tpl.variables || variables.some((v) => !v)) {
+		throw new ServiceError(`Este modelo exige ${tpl.variables} variável(is) preenchida(s)`, 400);
+	}
+
+	const template = { name: template_name, language: { code: language } };
+	if (tpl.variables > 0) {
+		template.components = [
+			{ type: 'body', parameters: variables.map((text) => ({ type: 'text', text })) },
+		];
+	}
+
+	let waMessageId = null;
+	try {
+		const { data: res } = await axios.post(
+			`${graphUrl()}/${phone.phone_number_id}/messages`,
+			{
+				messaging_product: 'whatsapp',
+				to: String(lead.whatsapp_number).replace(/\D/g, ''),
+				type: 'template',
+				template,
+			},
+			{ headers: { Authorization: `Bearer ${process.env.WHATSAPP_CLOUD_TOKEN}` } }
+		);
+		waMessageId = res?.messages?.[0]?.id ?? null;
+	} catch (err) {
+		throw new ServiceError(`Falha ao enviar modelo: ${templateService.metaMessage(err)}`, 502);
+	}
+
+	const text = templateService.renderBody(tpl.body, variables);
+	const [result] = await pool.query(
+		`INSERT INTO chat_messages (client_id, lead_id, client_phone_id, direction, sender, body, wa_message_id)
+		 VALUES (?, ?, ?, 'out', 'client', ?, ?)`,
+		[clientId, leadId, phone.id, text, waMessageId]
+	);
+	await pool.query('UPDATE leads SET human_handover = 1, updated_at = NOW() WHERE id = ?', [leadId]);
+
+	return { id: result.insertId, direction: 'out', sender: 'client', body: text, status: 'sent' };
+}
+
 const STATUS_RANK = { sent: 1, delivered: 2, read: 3 };
 
 /**
@@ -175,4 +242,4 @@ async function recordMessage(data) {
 	return { id: result.insertId || null, duplicated: result.affectedRows === 0 };
 }
 
-module.exports = { listConversations, getMessages, sendMessage, recordMessage, updateStatus, ServiceError };
+module.exports = { listConversations, getMessages, sendMessage, sendTemplate, recordMessage, updateStatus, ServiceError };

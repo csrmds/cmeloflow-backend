@@ -12,5 +12,6 @@ router.post('/messages/status', internalAuth, controller.updateStatus);
 router.get('/conversations', auth, controller.listConversations);
 router.get('/conversations/:leadId/messages', auth, controller.getMessages);
 router.post('/conversations/:leadId/messages', auth, controller.sendMessage);
+router.post('/conversations/:leadId/template', auth, controller.sendTemplate);
 
 module.exports = router;
