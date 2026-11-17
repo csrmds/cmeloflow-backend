@@ -14,6 +14,7 @@ const calendarRoutes = require('./routes/calendarRoutes')
 const logRoutes = require('./routes/logRoutes')
 const chatRoutes = require('./routes/chatRoutes')
 const templateRoutes = require('./routes/templateRoutes')
+const saleRoutes = require('./routes/saleRoutes')
 
 //CONFIG LOGGER
 //app.use(pinoHttp({ logger }));
@@ -44,6 +45,7 @@ app.use('/session', sessionRoutes)
 app.use('/calendar', calendarRoutes)
 app.use('/chat', chatRoutes)
 app.use('/templates', templateRoutes)
+app.use('/sales', saleRoutes)
 app.use('/logs', logRoutes);
 
 
