@@ -2,6 +2,7 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const pool = require('./database');
 const { generateToken } = require('../utils/jwt');
+const { seedDefaultStages } = require('../services/stageService');
 
 const FRONTEND_URL =
 	process.env.NODE_ENV === 'production'
@@ -49,6 +50,7 @@ passport.use(
 						values (?, ?, "inativo")`,
 						[name, email])
 					const clientId= resultClient.insertId
+					await seedDefaultStages(clientId)
 
 					const [result] = await pool.query(
 						`INSERT INTO users (email, name, provider, provider_user_id, client_id, role)

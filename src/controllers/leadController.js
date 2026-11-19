@@ -73,3 +73,33 @@ exports.updateHumanHandover = async (req, res) => {
 		return response.handleError(res, err, 'Erro ao atualizar atendimento humano');
 	}
 };
+
+// GET /leads/board  (frontend, autenticado)
+exports.board = async (req, res) => {
+	try {
+		const result = await leadService.board(req.user, req.query);
+		return response.success(res, result, 'Consulta realizada com sucesso', 200);
+	} catch (err) {
+		return response.handleError(res, err, 'Erro ao carregar quadro');
+	}
+};
+
+// PUT /leads/:id/stage  { stage_id, position? }  (frontend, autenticado)
+exports.moveToStage = async (req, res) => {
+	try {
+		const result = await leadService.moveToStage(req.user, req.params.id, req.body);
+		return response.success(res, result, 'Lead movido com sucesso', 200);
+	} catch (err) {
+		return response.handleError(res, err, 'Erro ao mover lead');
+	}
+};
+
+// POST /leads/stage  { client_id, lead_id, stage_name }  (n8n via x-api-key)
+exports.moveToStageByName = async (req, res) => {
+	try {
+		const result = await leadService.moveToStageByName(req.body);
+		return response.success(res, result, 'Lead movido com sucesso', 200);
+	} catch (err) {
+		return response.handleError(res, err, 'Erro ao mover lead');
+	}
+};

@@ -7,6 +7,7 @@ const app = express()
 const authRoutes = require('./routes/authRoutes')
 const productRoutes = require('./routes/productRoutes')
 const leadRoutes = require('./routes/leadRoutes')
+const stageRoutes = require('./routes/stageRoutes')
 const clientRoutes = require('./routes/clientRoutes')
 const workflowRoutes = require('./routes/workflowRoutes')
 const sessionRoutes = require('./routes/sessionRoutes')
@@ -39,6 +40,7 @@ app.use(express.json());
 app.use('/auth', authRoutes);
 app.use('/products', productRoutes);
 app.use('/leads', leadRoutes);
+app.use('/stages', stageRoutes);
 app.use('/clients', clientRoutes);
 app.use('/workflow', workflowRoutes);
 app.use('/session', sessionRoutes)

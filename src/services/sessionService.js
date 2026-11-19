@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const ServiceError = require('../utils/ServiceError');
+const stageService = require('./stageService');
 
 /**
  * RN003 - Inicialização de sessão de atendimento (chamado pelo n8n).
@@ -18,7 +19,6 @@ const ServiceError = require('../utils/ServiceError');
  *   instagram_username?: string,
  *   lead_name?: string,
  *   lead_email?: string,
- *   lead_status?: string,
  *   message?: string,
  * }} data
  */
@@ -33,7 +33,6 @@ async function init(data) {
 		instagram_username,
 		lead_name,
 		lead_email,
-		lead_status,
 		message,
 	} = data;
 
@@ -92,13 +91,13 @@ async function init(data) {
 		let leadRows;
 		if (source === 'whatsapp') {
 			[leadRows] = await conn.query(
-				`SELECT id, name, whatsapp_number, email, instagram_username, status, human_handover
+				`SELECT id, name, whatsapp_number, email, instagram_username, stage_id, human_handover
          FROM leads WHERE client_id = ? AND whatsapp_number = ?`,
 				[client.c_id, lead_whatsapp]
 			);
 		} else {
 			[leadRows] = await conn.query(
-				`SELECT id, name, whatsapp_number, email, instagram_username, status, human_handover
+				`SELECT id, name, whatsapp_number, email, instagram_username, stage_id, human_handover
          FROM leads WHERE client_id = ? AND instagram_scoped_userid = ?`,
 				[client.c_id, instagram_scoped_userid]
 			);
@@ -108,11 +107,14 @@ async function init(data) {
 		let is_new = false;
 
 		if (leadRows.length === 0) {
+			const stage_id = await stageService.getDefaultStageId(client.c_id, conn);
+			const stage_position = await stageService.nextLeadPosition(stage_id, conn);
+
 			const [insertResult] = await conn.query(
 				`INSERT INTO leads
            (client_id, instagram_scoped_userid, instagram_username, name,
-            whatsapp_number, source, status, human_handover)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'novo', 0)`,
+            whatsapp_number, source, stage_id, stage_position, human_handover)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
 				[
 					client.c_id,
 					instagram_scoped_userid ?? null,
@@ -120,6 +122,8 @@ async function init(data) {
 					lead_name ?? null,
 					lead_whatsapp ?? null,
 					source,
+					stage_id,
+					stage_position,
 				]
 			);
 			is_new = true;
@@ -128,7 +132,7 @@ async function init(data) {
 				name: lead_name ?? null,
 				whatsapp_number: lead_whatsapp ?? null,
 				instagram_username: instagram_username ?? null,
-				status: 'novo',
+				stage_id,
 				human_handover: 0,
 			};
 		} else {

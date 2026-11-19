@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const ServiceError = require('../utils/ServiceError');
+const stageService = require('./stageService');
 
 
 async function list() {
@@ -34,6 +35,8 @@ async function create(data) {
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		[name, email, instagram_id, instagram_username, instagram_name, instagram_photo, status ?? null]
 	);
+
+	await stageService.seedDefaultStages(result.insertId);
 
 	const [newClient] = await pool.query('SELECT * FROM clients WHERE id = ?', [result.insertId]);
 	return newClient[0];

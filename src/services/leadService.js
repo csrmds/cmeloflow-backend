@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const ServiceError = require('../utils/ServiceError');
+const stageService = require('./stageService');
 
 
 /**
@@ -42,13 +43,16 @@ async function upsertLead(data) {
 
 	// 2. Verifica se o lead já existe para esse cliente
 	const [rows] = await pool.query(
-		`SELECT lead_id, client_id, lead_status, lead_human_handover FROM vw_clients_leads
+		`SELECT lead_id, client_id, lead_stage_id, lead_stage_name, lead_human_handover FROM vw_clients_leads
      WHERE client_whatsapp_number = ? AND lead_whatsapp_number = ?`,
 		[client_whatsapp, lead_whatsapp]
 	);
 
 	// 3. Cria novo lead
 	if (rows.length === 0) {
+		const stage_id = await stageService.getDefaultStageId(client_id);
+		const stage_position = await stageService.nextLeadPosition(stage_id);
+
 		const [result] = await pool.query(
 			`INSERT INTO leads (
 			client_id,
@@ -56,10 +60,11 @@ async function upsertLead(data) {
 			whatsapp_number,
 			email,
 			source,
-			status,
+			stage_id,
+			stage_position,
 			notes
-      ) VALUES (?, ?, ?, ?, 'whatsapp', 'novo', ?)`,
-			[client_id, lead_name, lead_whatsapp, email, notes]
+      ) VALUES (?, ?, ?, ?, 'whatsapp', ?, ?, ?)`,
+			[client_id, lead_name, lead_whatsapp, email, stage_id, stage_position, notes]
 		);
 
 		const lead = {
@@ -68,7 +73,7 @@ async function upsertLead(data) {
 			name: lead_name ?? null,
 			whatsapp_number: lead_whatsapp,
 			email: email,
-			status: 'novo',
+			stage_id,
 			human_handover: 0,
 		};
 
@@ -101,10 +106,13 @@ async function insert(user, data) {
 		throw new ServiceError( 'Já existe um Lead cadastrado com esse número de Whatsapp.', 403 );
 	}
 
+	const stage_id = await stageService.getDefaultStageId(client_id);
+	const stage_position = await stageService.nextLeadPosition(stage_id);
+
 	const [result] = await pool.query(
-		`INSERT INTO leads (client_id, name, whatsapp_number, email, notes, status, human_handover, source)
-     VALUES (?, ?, ?, ?, ?, 'novo', 1, 'manual')`,
-		[client_id, name, whatsapp_number, email, notes]
+		`INSERT INTO leads (client_id, name, whatsapp_number, email, notes, stage_id, stage_position, human_handover, source)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'manual')`,
+		[client_id, name, whatsapp_number, email, notes, stage_id, stage_position]
 	);
 
 	if (!result.insertId) {
@@ -155,30 +163,35 @@ async function getById(user, id) {
 }
 
 /**
- * Atualiza um lead.
+ * Atualiza um lead. Se `stage_id` vier no body e for diferente do atual,
+ * o lead é movido para o final dessa raia.
  * @param {{ client_id: number, user_role: string }} user
  * @param {number|string} id
- * @param {{ name, whatsapp_number, status, human_handover, notes }} data
+ * @param {{ name, whatsapp_number, email, stage_id?, human_handover, notes }} data
  */
 async function update(user, id, data) {
 	const { client_id, user_role } = user;
-	const { name, whatsapp_number, email, status, human_handover, notes } = data;
+	const { name, whatsapp_number, email, stage_id, human_handover, notes } = data;
 
 	const [result] =
 		user_role === 'admin'
 			? await pool.query(
-				`UPDATE leads SET name = ?, whatsapp_number = ?, email = ?, status = ?, human_handover = ?, notes = ?
+				`UPDATE leads SET name = ?, whatsapp_number = ?, email = ?, human_handover = ?, notes = ?
            WHERE id = ?`,
-				[name, whatsapp_number, email, status, human_handover, notes, id]
+				[name, whatsapp_number, email, human_handover, notes, id]
 			)
 			: await pool.query(
-				`UPDATE leads SET name = ?, whatsapp_number = ?, email = ?, status = ?, human_handover = ?, notes = ?
+				`UPDATE leads SET name = ?, whatsapp_number = ?, email = ?, human_handover = ?, notes = ?
            WHERE id = ? AND client_id = ?`,
-				[name, whatsapp_number, email, status, human_handover, notes, id, client_id]
+				[name, whatsapp_number, email, human_handover, notes, id, client_id]
 			);
 
 	if (result.affectedRows === 0) {
 		throw new ServiceError('Não foi possível atualizar o lead', 404);
+	}
+
+	if (stage_id) {
+		await moveToStage(user, id, { stage_id });
 	}
 
 	return result;
@@ -208,6 +221,138 @@ async function remove(user, id) {
 }
 
 /**
+ * Núcleo da movimentação: reposiciona o lead na raia de destino e recompacta as posições
+ * da raia de origem. Deve ser chamado dentro de uma transação.
+ * @param {import('mysql2/promise').PoolConnection} conn
+ * @param {{ id: number, client_id: number, stage_id: number|null }} lead
+ * @param {number} stageId
+ * @param {number|undefined} position  índice 0-based; omitido = final da raia
+ */
+async function placeLead(conn, lead, stageId, position) {
+	const [targetRows] = await conn.query(
+		`SELECT id FROM leads WHERE stage_id = ? AND id <> ? ORDER BY stage_position, id FOR UPDATE`,
+		[stageId, lead.id]
+	);
+	const ids = targetRows.map((r) => r.id);
+
+	const sameStage = lead.stage_id === stageId;
+	if (sameStage && position === undefined) return;
+
+	const idx = position === undefined ? ids.length : Math.max(0, Math.min(Number(position) || 0, ids.length));
+	ids.splice(idx, 0, lead.id);
+
+	for (let i = 0; i < ids.length; i++) {
+		await conn.query(`UPDATE leads SET stage_id = ?, stage_position = ? WHERE id = ?`, [stageId, i, ids[i]]);
+	}
+
+	if (lead.stage_id && !sameStage) {
+		const [sourceRows] = await conn.query(
+			`SELECT id FROM leads WHERE stage_id = ? ORDER BY stage_position, id`,
+			[lead.stage_id]
+		);
+		for (let i = 0; i < sourceRows.length; i++) {
+			await conn.query(`UPDATE leads SET stage_position = ? WHERE id = ?`, [i, sourceRows[i].id]);
+		}
+	}
+}
+
+/**
+ * Move um lead para uma raia (e posição) do quadro.
+ * @param {{ client_id: number, user_role: string }} user
+ * @param {number|string} id
+ * @param {{ stage_id: number|string, position?: number }} data
+ */
+async function moveToStage(user, id, data) {
+	const { client_id, user_role } = user;
+	const stageId = Number(data.stage_id);
+	if (!stageId) throw new ServiceError('stage_id é obrigatório', 400);
+
+	const conn = await pool.getConnection();
+	try {
+		await conn.beginTransaction();
+
+		const [leadRows] =
+			user_role === 'admin'
+				? await conn.query(`SELECT id, client_id, stage_id FROM leads WHERE id = ? FOR UPDATE`, [id])
+				: await conn.query(
+					`SELECT id, client_id, stage_id FROM leads WHERE id = ? AND client_id = ? FOR UPDATE`,
+					[id, client_id]
+				);
+		if (leadRows.length === 0) throw new ServiceError('Lead não encontrado', 404);
+		const lead = leadRows[0];
+
+		const [stageRows] = await conn.query(
+			`SELECT id FROM lead_stages WHERE id = ? AND client_id = ?`,
+			[stageId, lead.client_id]
+		);
+		if (stageRows.length === 0) throw new ServiceError('Raia não encontrada', 404);
+
+		await placeLead(conn, lead, stageId, data.position);
+
+		await conn.commit();
+		return { id: lead.id, stage_id: stageId };
+	} catch (err) {
+		await conn.rollback();
+		throw err;
+	} finally {
+		conn.release();
+	}
+}
+
+/**
+ * Move um lead pelo NOME da raia. Chamado pelo n8n (x-api-key).
+ * @param {{ client_id: number, lead_id: number, stage_name: string }} data
+ */
+async function moveToStageByName(data) {
+	const { client_id, lead_id, stage_name } = data;
+	if (!client_id || !lead_id || !stage_name) {
+		throw new ServiceError('client_id, lead_id e stage_name são obrigatórios', 400);
+	}
+
+	const [stages] = await pool.query(
+		`SELECT id FROM lead_stages WHERE client_id = ? AND LOWER(name) = LOWER(?) LIMIT 1`,
+		[client_id, String(stage_name).trim()]
+	);
+	if (stages.length === 0) throw new ServiceError('Raia não encontrada', 404);
+
+	return moveToStage({ client_id, user_role: 'client' }, lead_id, { stage_id: stages[0].id });
+}
+
+/**
+ * Quadro Kanban: raias do cliente com seus leads.
+ * @param {{ client_id: number, user_role: string }} user
+ * @param {{ client_id?: number }} query  (só admin pode informar client_id)
+ */
+async function board(user, query = {}) {
+	const clientId =
+		user.user_role === 'admin' && query.client_id ? Number(query.client_id) : user.client_id;
+
+	const [stages] = await pool.query(
+		`SELECT id, name, color, position, kind, is_default FROM lead_stages
+     WHERE client_id = ? ORDER BY position, id`,
+		[clientId]
+	);
+	if (stages.length === 0) return { stages: [] };
+
+	const [leads] = await pool.query(
+		`SELECT id, name, whatsapp_number, email, instagram_username, source, human_handover,
+            notes, stage_id, stage_position, created_at, updated_at
+     FROM leads WHERE client_id = ? ORDER BY stage_position, id`,
+		[clientId]
+	);
+
+	const defaultStage = stages.find((s) => s.is_default) ?? stages[0];
+	const byStage = new Map(stages.map((s) => [s.id, { ...s, leads: [] }]));
+
+	for (const lead of leads) {
+		const column = byStage.get(lead.stage_id) ?? byStage.get(defaultStage.id);
+		column.leads.push(lead);
+	}
+
+	return { stages: [...byStage.values()] };
+}
+
+/**
  * Atualiza o flag de atendimento humano de um lead.
  * Chamado pelo n8n (sem auth de usuário, via x-api-key).
  * @param {{ human_handover: number, client_id: number, lead_id: number }} data
@@ -233,6 +378,9 @@ module.exports = {
 	list,
 	getById,
 	update,
+	board,
+	moveToStage,
+	moveToStageByName,
 	remove,
 	updateHumanHandover,
 	ServiceError,
