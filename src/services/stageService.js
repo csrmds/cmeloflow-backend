@@ -220,7 +220,8 @@ async function remove(user, id, query = {}) {
 		// Leads vão para o final da raia de destino, mantendo a ordem relativa
 		const offset = await nextLeadPosition(target.id, conn);
 		const [moved] = await conn.query(
-			`UPDATE leads SET stage_id = ?, stage_position = stage_position + ? WHERE stage_id = ?`,
+			`UPDATE leads SET stage_id = ?, stage_position = stage_position + ?, stage_changed_at = NOW(), updated_at = updated_at
+       WHERE stage_id = ?`,
 			[target.id, offset, stage.id]
 		);
 

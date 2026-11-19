@@ -1,6 +1,7 @@
 const pool = require('../config/database');
 const ServiceError = require('../utils/ServiceError');
 const stageService = require('./stageService');
+const leadService = require('./leadService');
 
 /**
  * RN003 - Inicialização de sessão de atendimento (chamado pelo n8n).
@@ -137,6 +138,10 @@ async function init(data) {
 			};
 		} else {
 			lead = leadRows[0];
+
+			// Lead que estava em raia Ganho/Perdido voltou a conversar: reabre na raia padrão
+			const reopenedStageId = await leadService.reopenIfClosed(conn, lead, client.c_id);
+			if (reopenedStageId) lead = { ...lead, stage_id: reopenedStageId };
 		}
 
 		// Essa consulta não é mais retornada na sessionInit

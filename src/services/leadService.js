@@ -228,7 +228,7 @@ async function remove(user, id) {
  * @param {number} stageId
  * @param {number|undefined} position  índice 0-based; omitido = final da raia
  */
-async function placeLead(conn, lead, stageId, position) {
+async function placeLead(conn, lead, stageId, stageKind, position) {
 	const [targetRows] = await conn.query(
 		`SELECT id FROM leads WHERE stage_id = ? AND id <> ? ORDER BY stage_position, id FOR UPDATE`,
 		[stageId, lead.id]
@@ -238,11 +238,28 @@ async function placeLead(conn, lead, stageId, position) {
 	const sameStage = lead.stage_id === stageId;
 	if (sameStage && position === undefined) return;
 
-	const idx = position === undefined ? ids.length : Math.max(0, Math.min(Number(position) || 0, ids.length));
+	// Raias Ganho/Perdido listam só os leads recentes: o card entra sempre no topo,
+	// assim o índice do front não conflita com leads ocultos pelo filtro de período.
+	const idx =
+		stageKind !== 'open'
+			? 0
+			: position === undefined
+				? ids.length
+				: Math.max(0, Math.min(Number(position) || 0, ids.length));
 	ids.splice(idx, 0, lead.id);
 
+	// updated_at = updated_at: reindexar posições não conta como atualização do lead
 	for (let i = 0; i < ids.length; i++) {
-		await conn.query(`UPDATE leads SET stage_id = ?, stage_position = ? WHERE id = ?`, [stageId, i, ids[i]]);
+		await conn.query(
+			`UPDATE leads SET stage_id = ?, stage_position = ?, updated_at = updated_at WHERE id = ?`,
+			[stageId, i, ids[i]]
+		);
+	}
+	if (!sameStage) {
+		await conn.query(
+			`UPDATE leads SET stage_changed_at = NOW(), updated_at = updated_at WHERE id = ?`,
+			[lead.id]
+		);
 	}
 
 	if (lead.stage_id && !sameStage) {
@@ -251,7 +268,7 @@ async function placeLead(conn, lead, stageId, position) {
 			[lead.stage_id]
 		);
 		for (let i = 0; i < sourceRows.length; i++) {
-			await conn.query(`UPDATE leads SET stage_position = ? WHERE id = ?`, [i, sourceRows[i].id]);
+			await conn.query(`UPDATE leads SET stage_position = ?, updated_at = updated_at WHERE id = ?`, [i, sourceRows[i].id]);
 		}
 	}
 }
@@ -282,12 +299,12 @@ async function moveToStage(user, id, data) {
 		const lead = leadRows[0];
 
 		const [stageRows] = await conn.query(
-			`SELECT id FROM lead_stages WHERE id = ? AND client_id = ?`,
+			`SELECT id, kind FROM lead_stages WHERE id = ? AND client_id = ?`,
 			[stageId, lead.client_id]
 		);
 		if (stageRows.length === 0) throw new ServiceError('Raia não encontrada', 404);
 
-		await placeLead(conn, lead, stageId, data.position);
+		await placeLead(conn, lead, stageId, stageRows[0].kind, data.position);
 
 		await conn.commit();
 		return { id: lead.id, stage_id: stageId };
@@ -319,37 +336,99 @@ async function moveToStageByName(data) {
 }
 
 /**
+ * Reabre automaticamente um lead que estava numa raia Ganho/Perdido quando ele volta a conversar.
+ * Move o lead para a raia padrão do cliente. Chamado pelo sessionService a cada mensagem recebida.
+ * @param {import('mysql2/promise').PoolConnection} conn
+ * @param {{ id: number, stage_id: number|null }} lead
+ * @param {number} clientId
+ * @returns {Promise<number|null>} novo stage_id, ou null se nada mudou
+ */
+async function reopenIfClosed(conn, lead, clientId) {
+	if (!lead.stage_id) return null;
+
+	const [rows] = await conn.query(`SELECT kind FROM lead_stages WHERE id = ?`, [lead.stage_id]);
+	if (!rows.length || rows[0].kind === 'open') return null;
+
+	const defaultStageId = await stageService.getDefaultStageId(clientId, conn);
+	if (defaultStageId === lead.stage_id) return null;
+
+	await conn.beginTransaction();
+	try {
+		await placeLead(conn, lead, defaultStageId, 'open', undefined);
+		await conn.commit();
+	} catch (err) {
+		await conn.rollback();
+		throw err;
+	}
+	return defaultStageId;
+}
+
+const BOARD_PERIODS = [7, 30, 90];
+
+/**
  * Quadro Kanban: raias do cliente com seus leads.
+ * Raias Ganho/Perdido mostram só os leads que entraram nelas nos últimos `days` dias
+ * (7, 30 ou 90; `days=all` mostra tudo). O padrão é 30. Cada raia fechada devolve `hidden_count`.
  * @param {{ client_id: number, user_role: string }} user
- * @param {{ client_id?: number }} query  (só admin pode informar client_id)
+ * @param {{ client_id?: number, days?: string|number }} query  (só admin pode informar client_id)
  */
 async function board(user, query = {}) {
 	const clientId =
 		user.user_role === 'admin' && query.client_id ? Number(query.client_id) : user.client_id;
+
+	let days = 30;
+	if (query.days === 'all') days = null;
+	else if (query.days !== undefined) {
+		const n = Number(query.days);
+		if (!BOARD_PERIODS.includes(n)) {
+			throw new ServiceError('days inválido. Use 7, 30, 90 ou all', 400);
+		}
+		days = n;
+	}
 
 	const [stages] = await pool.query(
 		`SELECT id, name, color, position, kind, is_default FROM lead_stages
      WHERE client_id = ? ORDER BY position, id`,
 		[clientId]
 	);
-	if (stages.length === 0) return { stages: [] };
+	if (stages.length === 0) return { stages: [], days };
+
 
 	const [leads] = await pool.query(
-		`SELECT id, name, whatsapp_number, email, instagram_username, source, human_handover,
-            notes, stage_id, stage_position, created_at, updated_at
-     FROM leads WHERE client_id = ? ORDER BY stage_position, id`,
-		[clientId]
+		`SELECT l.id, l.name, l.whatsapp_number, l.email, l.instagram_username, l.source,
+            l.human_handover, l.notes, l.stage_id, l.stage_position, l.stage_changed_at,
+            l.created_at, l.updated_at
+     FROM leads l
+     LEFT JOIN lead_stages ls ON ls.id = l.stage_id
+     WHERE l.client_id = ?
+       AND (ls.kind IS NULL OR ls.kind = 'open' ${days === null ? '' : 'OR l.stage_changed_at >= DATE_SUB(NOW(), INTERVAL ? DAY)'})
+     ORDER BY l.stage_position, l.id`,
+		days === null ? [clientId] : [clientId, days]
 	);
 
+	const hidden = new Map();
+	if (days !== null) {
+		const [rows] = await pool.query(
+			`SELECT l.stage_id, COUNT(*) AS total
+       FROM leads l JOIN lead_stages ls ON ls.id = l.stage_id
+       WHERE l.client_id = ? AND ls.kind <> 'open' AND l.stage_changed_at < DATE_SUB(NOW(), INTERVAL ? DAY)
+       GROUP BY l.stage_id`,
+			[clientId, days]
+		);
+		rows.forEach((r) => hidden.set(r.stage_id, Number(r.total)));
+	}
+
 	const defaultStage = stages.find((s) => s.is_default) ?? stages[0];
-	const byStage = new Map(stages.map((s) => [s.id, { ...s, leads: [] }]));
+	const byStage = new Map(
+		stages.map((s) => [s.id, { ...s, leads: [], hidden_count: hidden.get(s.id) ?? 0 }])
+	);
 
 	for (const lead of leads) {
 		const column = byStage.get(lead.stage_id) ?? byStage.get(defaultStage.id);
 		column.leads.push(lead);
 	}
 
-	return { stages: [...byStage.values()] };
+	return { stages: [...byStage.values()], days };
 }
 
 /**
@@ -381,6 +460,7 @@ module.exports = {
 	board,
 	moveToStage,
 	moveToStageByName,
+	reopenIfClosed,
 	remove,
 	updateHumanHandover,
 	ServiceError,
